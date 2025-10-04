@@ -2,13 +2,7 @@
 A C89 standard compliant, single header, nostdlib (no C Standard Library) Wave Function Collapse (WFC).
 
 <p align="center">
-<a href="https://github.com/nickscha/wfc"><img src="assets/wfc_simple_colored.png"></a>
-</p>
-<p align="center">
 <a href="https://github.com/nickscha/wfc"><img src="assets/wfc.gif"></a>
-</p>
-<p align="center">
-<a href="https://github.com/nickscha/wfc"><img src="assets/wfc_simple.png"></a>
 </p>
 
 For more information please look at the "wfc.h" file or take a look at the "examples" or "tests" folder.
