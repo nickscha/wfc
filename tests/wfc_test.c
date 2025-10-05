@@ -102,6 +102,7 @@ static void wfc_test_simple_tiles(void)
   tiles.tile_edge_sockets[19] = wfc_socket_pack_4(0, 1, 0, 0); /* Left   */
 
   {
+    unsigned int retries = 0;
     unsigned char *grid_memory;
     unsigned int grid_memory_size = 0;
 
@@ -131,7 +132,10 @@ static void wfc_test_simple_tiles(void)
     {
       wfc_grid_initialize(&grid, &tiles, grid_memory, grid_memory_size);
       wfc_seed_lcg += 1; /* increment seed if WFC fails */
+      retries++;
     }
+
+    printf("[wfc] solved grid after %d retries\n", retries);
 
     /* Export WFC to PPM */
     {
@@ -168,7 +172,7 @@ static void wfc_test_simple_tiles(void)
       tile_chars[3] = tile_3;
       tile_chars[4] = tile_4;
 
-      wfc_export_ppm(&grid, &tiles, tile_chars, "wfc.ppm", 8, 1, 0, 3, 3);
+      wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 8, 1, 0, 3, 3);
     }
   }
 }

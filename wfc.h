@@ -295,7 +295,9 @@ WFC_API WFC_INLINE void wfc_update_neighbor(
     wfc_socket_8x07 neighbor_socket;
 
     if (candidate_tile >= tile_count)
+    {
       continue; /* skip invalid */
+    }
 
     neighbor_socket = tiles->tile_edge_sockets[candidate_tile * tiles->tile_edge_count + (unsigned int)opposite_edge];
 
@@ -316,7 +318,9 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
   int steps = 0;
 
   if (!grid || !tiles)
+  {
     return 0;
+  }
 
   grid_size = (int)(grid->rows * grid->cols);
   tile_count = (int)tiles->tile_count;
@@ -336,11 +340,16 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
       unsigned char entropy;
 
       if (grid->cell_collapsed[i])
+      {
         continue;
+      }
 
       entropy = grid->cell_entropy_count[i];
+
       if (entropy == 0)
+      {
         return 0; /* contradiction: no possible tiles */
+      }
 
       if (entropy < min_entropy)
       {
@@ -355,15 +364,16 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
     }
 
     if (n_candidates == 0)
+    {
       break; /* all cells collapsed */
+    }
 
     /* (2) Pick a random lowest-entropy cell */
     chosen_idx = candidates[wfc_randi_range(0, n_candidates)];
 
     /* (3) Pick one of its allowed tiles randomly */
     tile_choice = wfc_randi_range(0, grid->cell_entropy_count[chosen_idx]);
-    grid->cell_entropies[chosen_idx * tile_count + 0] =
-        grid->cell_entropies[chosen_idx * tile_count + tile_choice];
+    grid->cell_entropies[chosen_idx * tile_count + 0] = grid->cell_entropies[chosen_idx * tile_count + tile_choice];
     grid->cell_entropy_count[chosen_idx] = 1;
     grid->cell_collapsed[chosen_idx] = 1;
 
@@ -386,19 +396,27 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
         int n_idx;
 
         if (nx < 0 || ny < 0 || nx >= (int)grid->cols || ny >= (int)grid->rows)
+        {
           continue;
+        }
 
         n_idx = wfc_grid_index_at(nx, ny, (int)grid->cols);
+
         if (grid->cell_collapsed[n_idx])
+        {
           continue;
+        }
 
         wfc_update_neighbor(grid, tiles, chosen_idx, n_idx, e, wfc_dirs[e][2]);
       }
     }
 
     steps++;
+
     if (steps > 1000)
+    {
       break; /* safety guard */
+    }
   }
 
   return 1;

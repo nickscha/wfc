@@ -16,10 +16,11 @@ static void draw_border(
         for (x = x0; x < x0 + w; ++x)
         {
             if (y < 0 || y >= img_h || x < 0 || x >= img_w)
+            {
                 continue;
+            }
 
-            if (x < x0 + thickness || x >= x0 + w - thickness ||
-                y < y0 + thickness || y >= y0 + h - thickness)
+            if (x < x0 + thickness || x >= x0 + w - thickness || y < y0 + thickness || y >= y0 + h - thickness)
             {
                 idx = (y * img_w + x) * 3;
                 img[idx + 0] = 255;
@@ -43,18 +44,25 @@ static void draw_line(int *buffer, int img_w, int img_h,
         if (x0 >= 0 && y0 >= 0 && x0 < img_w && y0 < img_h)
         {
             int idx = (y0 * img_w + x0) * 3;
+
             buffer[idx + 0] = r;
             buffer[idx + 1] = g;
             buffer[idx + 2] = b;
         }
+
         if (x0 == x1 && y0 == y1)
+        {
             break;
+        }
+
         e2 = 2 * err;
+
         if (e2 >= dy)
         {
             err += dy;
             x0 += sx;
         }
+
         if (e2 <= dx)
         {
             err += dx;
@@ -66,6 +74,7 @@ static void draw_line(int *buffer, int img_w, int img_h,
 static void wfc_export_ppm(
     wfc_grid *grid, wfc_tiles *tiles,
     char **tile_chars,
+    int tile_chars_size,
     char *filename,
     int scale,
     int highlight_tiles,
@@ -79,7 +88,9 @@ static void wfc_export_ppm(
     FILE *fp;
 
     if (scale < 1)
+    {
         scale = 1;
+    }
 
     grid_img_w = (int)grid->cols * tile_w * scale;
     grid_img_h = (int)grid->rows * tile_h * scale;
@@ -88,8 +99,11 @@ static void wfc_export_ppm(
     img_h = grid_img_h;
 
     buffer = (int *)malloc((size_t)(img_w * img_h * 3 * (int)sizeof(int)));
+
     if (!buffer)
+    {
         return;
+    }
 
     /* Render grid */
     for (r = 0; r < grid_img_h; ++r)
@@ -104,7 +118,9 @@ static void wfc_export_ppm(
             int idx_pix;
 
             if (cell_col >= (int)grid->cols || cell_row >= (int)grid->rows)
+            {
                 continue;
+            }
 
             idx_grid = cell_row * (int)grid->cols + cell_col;
             local_x = (c % (tile_w * scale)) / scale;
@@ -121,6 +137,7 @@ static void wfc_export_ppm(
             else
             {
                 tile_id = grid->cell_entropies[idx_grid * (int)tiles->tile_count + 0];
+
                 art = tile_chars[tile_id];
                 if (art[local_y * tile_w + local_x] == '#')
                 {
@@ -137,14 +154,25 @@ static void wfc_export_ppm(
                     if (cell_x < 2 || cell_y < 2)
                     {
                         buffer[idx_pix + 0] += 20;
+
                         if (buffer[idx_pix + 0] > 255)
+                        {
                             buffer[idx_pix + 0] = 255;
+                        }
+
                         buffer[idx_pix + 1] += 20;
+
                         if (buffer[idx_pix + 1] > 255)
+                        {
                             buffer[idx_pix + 1] = 255;
+                        }
+
                         buffer[idx_pix + 2] += 20;
+
                         if (buffer[idx_pix + 2] > 255)
+                        {
                             buffer[idx_pix + 2] = 255;
+                        }
                     }
 
                     /* Shadow bottom-right */
@@ -169,12 +197,15 @@ static void wfc_export_ppm(
     if (highlight_tiles)
     {
         int t;
-        for (t = 0; t < 5; ++t)
+
+        for (t = 0; t < tile_chars_size; ++t)
         {
             int tries = 100; /* safety */
+
             while (tries--)
             {
                 int idx = (int)(wfc_randi()) % (int)(grid->rows * grid->cols);
+
                 if (grid->cell_collapsed[idx])
                 {
                     int tile_id = grid->cell_entropies[idx * (int)tiles->tile_count + 0];
@@ -182,8 +213,9 @@ static void wfc_export_ppm(
                     {
                         int x0 = (idx % (int)grid->cols) * tile_w * scale;
                         int y0 = (idx / (int)grid->cols) * tile_h * scale;
-                        draw_border(buffer, img_w, img_h, x0, y0,
-                                    tile_w * scale, tile_h * scale, 2);
+
+                        draw_border(buffer, img_w, img_h, x0, y0, tile_w * scale, tile_h * scale, 2);
+
                         break;
                     }
                 }
@@ -195,28 +227,35 @@ static void wfc_export_ppm(
     if (highlight_grid) /* draw grid lines */
     {
         int row, col;
+
         for (row = 0; row <= (int)grid->rows; ++row)
         {
             int y = row * tile_h * scale;
+
             if (y >= img_h)
+            {
                 continue;
-            draw_line(buffer, img_w, img_h,
-                      0, y, img_w - 1, y,
-                      6, 40, 39);
+            }
+
+            draw_line(buffer, img_w, img_h, 0, y, img_w - 1, y, 6, 40, 39);
         }
+        
         for (col = 0; col <= (int)grid->cols; ++col)
         {
             int x = col * tile_w * scale;
+
             if (x >= img_w)
+            {
                 continue;
-            draw_line(buffer, img_w, img_h,
-                      x, 0, x, img_h - 1,
-                      6, 40, 39);
+            }
+
+            draw_line(buffer, img_w, img_h, x, 0, x, img_h - 1, 6, 40, 39);
         }
     }
 
     /* Write PPM */
     fp = fopen(filename, "w");
+
     if (!fp)
     {
         free(buffer);
@@ -224,11 +263,13 @@ static void wfc_export_ppm(
     }
 
     fprintf(fp, "P3\n%d %d\n255\n", img_w, img_h);
+
     for (r = 0; r < img_h; ++r)
     {
         for (c = 0; c < img_w; ++c)
         {
             int idx = (r * img_w + c) * 3;
+
             fprintf(fp, "%d %d %d ", buffer[idx], buffer[idx + 1], buffer[idx + 2]);
         }
         fprintf(fp, "\n");
