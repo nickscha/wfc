@@ -64,8 +64,9 @@ static void wfc_test_tile_rotation_even_sockets(void)
   tiles.tile_edge_count = 4;        /* 4 edges */
   tiles.tile_edge_socket_count = 3; /* 3 values per edge */
 
-  assert(wfc_tiles_memory_size(&tiles, &tiles_memory_size));
+  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_edge_count);
   tiles_memory = malloc(tiles_memory_size);
+
   assert(wfc_tiles_initialize(&tiles, tiles_memory, tiles_memory_size));
 
   /* Setup tile sockets */
@@ -162,8 +163,9 @@ static void wfc_test_tile_rotation_uneven_sockets(void)
   tiles.tile_edge_count = 4;        /* 4 edges */
   tiles.tile_edge_socket_count = 3; /* 3 values per edge */
 
-  assert(wfc_tiles_memory_size(&tiles, &tiles_memory_size));
+  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_edge_count);
   tiles_memory = malloc(tiles_memory_size);
+
   assert(wfc_tiles_initialize(&tiles, tiles_memory, tiles_memory_size));
 
   /* Setup tile sockets */
@@ -259,9 +261,7 @@ static void wfc_test_simple_tiles(void)
   tiles.tile_edge_count = 4;        /* 4 edges */
   tiles.tile_edge_socket_count = 3; /* 3 values per edge */
 
-  assert(wfc_tiles_memory_size(&tiles, &tiles_memory_size));
-  assert(tiles_memory_size > 0);
-
+  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_edge_count);
   tiles_memory = malloc(tiles_memory_size);
 
   assert(wfc_tiles_initialize(&tiles, tiles_memory, tiles_memory_size));
@@ -308,8 +308,7 @@ static void wfc_test_simple_tiles(void)
     grid.cols = 16;
     grid.rows = 16;
 
-    assert(wfc_grid_memory_size(&grid, &tiles, &grid_memory_size));
-    assert(grid_memory_size > 0);
+    grid_memory_size = WFC_GRID_MEMORY_SIZE(grid.rows, grid.cols, tiles.tile_count);
 
     printf("[wfc] tiles_memory_size (mb): %10.6f\n", (double)tiles_memory_size / 1024.0 / 1024.0);
     printf("[wfc]  grid_memory_size (mb): %10.6f\n", (double)grid_memory_size / 1024.0 / 1024.0);

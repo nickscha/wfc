@@ -157,28 +157,22 @@ typedef struct wfc_tiles
 
 } wfc_tiles;
 
-WFC_API WFC_INLINE int wfc_tiles_memory_size(wfc_tiles *tiles, unsigned int *tiles_memory_size)
-{
-  unsigned int base_size = (unsigned int)sizeof(unsigned int);
+/* Tile memory size calculation
+   Computes the total bytes required for all tile arrays.
 
-  if (!tiles || !tiles_memory_size || tiles->tile_capacity == 0 || tiles->tile_edge_count == 0 || tiles->tile_edge_socket_count == 0)
-  {
-    return 0;
-  }
+   Usage:
+      unsigned int size = WFC_TILES_MEMORY_SIZE(tile_capacity, tile_edge_count);
 
-  *tiles_memory_size = base_size * tiles->tile_capacity +                         /* tile_ids          */
-                       base_size * tiles->tile_capacity +                         /* tile_rotations    */
-                       base_size * tiles->tile_capacity * tiles->tile_edge_count; /* tile_edge_sockets */
-
-  return 1;
-}
+*/
+#define WFC_TILES_MEMORY_SIZE(tile_capacity, tile_edge_count)                                 \
+  ((unsigned int)(sizeof(unsigned int) * ((tile_capacity) * 2 /* tile_ids + tile_rotations */ \
+                                          + (tile_capacity) * (tile_edge_count) /* tile_edge_sockets */)))
 
 WFC_API WFC_INLINE int wfc_tiles_initialize(wfc_tiles *tiles, unsigned char *tiles_memory, unsigned int tiles_memory_size)
 {
   unsigned char *ptr = tiles_memory;
-  unsigned int required_memory_size = 0;
 
-  if (!tiles || !tiles_memory || !wfc_tiles_memory_size(tiles, &required_memory_size) || tiles_memory_size < required_memory_size)
+  if (!tiles || !tiles_memory || tiles_memory_size < WFC_TILES_MEMORY_SIZE(tiles->tile_capacity, tiles->tile_edge_count))
   {
     return 0;
   }
@@ -278,35 +272,26 @@ typedef struct wfc_grid
 
 } wfc_grid;
 
-WFC_API WFC_INLINE int wfc_grid_memory_size(wfc_grid *grid, wfc_tiles *tiles, unsigned int *grid_memory_size)
-{
-  unsigned int base_size = (unsigned int)sizeof(unsigned char);
-  unsigned int grid_size = 0;
+/* Grid memory size calculation
+   Computes the total bytes required for the grid arrays.
 
-  if (!grid || !tiles || !grid_memory_size || grid->rows == 0 || grid->cols == 0 || tiles->tile_count == 0)
-  {
-    return 0;
-  }
-
-  grid_size = grid->cols * grid->rows;
-
-  *grid_memory_size = base_size * grid_size +                    /* cell_collapsed */
-                      base_size * grid_size +                    /* cell_entropy_count */
-                      base_size * grid_size * tiles->tile_count; /* cell_entropies */
-  return 1;
-}
+   Usage:
+      unsigned int size = WFC_GRID_MEMORY_SIZE(rows, cols, tile_count);
+*/
+#define WFC_GRID_MEMORY_SIZE(rows, cols, tile_count)                                                       \
+  ((unsigned int)(sizeof(unsigned char) * (((rows) * (cols)) * 2 /* cell_collapsed + cell_entropy_count */ \
+                                           + ((rows) * (cols)) * (tile_count) /* cell_entropies */)))
 
 WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, unsigned char *grid_memory, unsigned int grid_memory_size)
 {
   unsigned char *ptr = grid_memory;
-  unsigned int required_memory_size = 0;
 
   unsigned int grid_size;
   unsigned int tile_count;
   unsigned int i;
   unsigned char t;
 
-  if (!grid || !tiles || !grid_memory || !wfc_grid_memory_size(grid, tiles, &required_memory_size) || grid_memory_size < required_memory_size)
+  if (!grid || !tiles || !grid_memory || grid_memory_size < WFC_GRID_MEMORY_SIZE(grid->rows, grid->cols, tiles->tile_count))
   {
     return 0;
   }
