@@ -260,6 +260,7 @@ WFC_API WFC_INLINE int wfc_tiles_add_tile(
  * # Grid initialization and setup
  * #############################################################################
  */
+/* Data-oriented SoA grid struct */
 typedef struct wfc_grid
 {
   /* Configuration */
