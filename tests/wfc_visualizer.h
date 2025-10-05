@@ -136,7 +136,7 @@ static void wfc_export_ppm(
             }
             else
             {
-                tile_id = grid->cell_entropies[idx_grid * (int)tiles->tile_size + 0];
+                tile_id = grid->cell_entropies[idx_grid * (int)tiles->tile_count + 0];
 
                 art = tile_chars[tile_id];
                 if (art[local_y * tile_w + local_x] == '#')
@@ -208,8 +208,8 @@ static void wfc_export_ppm(
 
                 if (grid->cell_collapsed[idx])
                 {
-                    int tile_id = grid->cell_entropies[idx * (int)tiles->tile_size + 0];
-                    
+                    int tile_id = grid->cell_entropies[idx * (int)tiles->tile_count + 0];
+
                     if (tile_id == t)
                     {
                         int x0 = (idx % (int)grid->cols) * tile_w * scale;
@@ -240,7 +240,7 @@ static void wfc_export_ppm(
 
             draw_line(buffer, img_w, img_h, 0, y, img_w - 1, y, 6, 40, 39);
         }
-        
+
         for (col = 0; col <= (int)grid->cols; ++col)
         {
             int x = col * tile_w * scale;

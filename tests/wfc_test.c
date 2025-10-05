@@ -96,7 +96,7 @@ static void wfc_test_tile_rotation_even_sockets(void)
   /* Add tile with three rotations */
   wfc_tiles_add_tile(&tiles, 1, socket_buffer, 3);
 
-  assert(tiles.tile_size == 5);
+  assert(tiles.tile_count == 5);
   assert(tiles.tile_ids[0] == 0);
   assert(tiles.tile_ids[1] == 1);
   assert(tiles.tile_ids[2] == 1);
@@ -194,7 +194,7 @@ static void wfc_test_tile_rotation_uneven_sockets(void)
   /* Add tile with three rotations */
   wfc_tiles_add_tile(&tiles, 1, socket_buffer, 3);
 
-  assert(tiles.tile_size == 5);
+  assert(tiles.tile_count == 5);
   assert(tiles.tile_ids[0] == 0);
   assert(tiles.tile_ids[1] == 1);
   assert(tiles.tile_ids[2] == 1);
@@ -296,7 +296,7 @@ static void wfc_test_simple_tiles(void)
     /* Add tile with three rotations */
     wfc_tiles_add_tile(&tiles, 1, socket_buffer, 3);
 
-    assert(tiles.tile_size == 5);
+    assert(tiles.tile_count == 5);
   }
 
   {
@@ -319,9 +319,9 @@ static void wfc_test_simple_tiles(void)
 
     assert(wfc_grid_initialize(&grid, &tiles, grid_memory, grid_memory_size));
     assert(grid.cell_collapsed[0] == 0);
-    assert(grid.cell_entropy_count[0] == tiles.tile_size);
+    assert(grid.cell_entropy_count[0] == tiles.tile_count);
     assert(grid.cell_collapsed[grid.rows * grid.cols - 1] == 0);
-    assert(grid.cell_entropy_count[grid.rows * grid.cols - 1] == tiles.tile_size);
+    assert(grid.cell_entropy_count[grid.rows * grid.cols - 1] == tiles.tile_count);
 
     /* Run WFC */
     wfc_seed_lcg = 42;
