@@ -262,9 +262,15 @@ WFC_API WFC_INLINE int wfc_tiles_add_tile(
  */
 typedef struct wfc_grid
 {
-  unsigned int rows;                 /* Number of grid rows    */
-  unsigned int cols;                 /* Number of grid columns */
-  unsigned int cell_current;         /* The current processed cell */
+  /* Configuration */
+  unsigned int rows; /* Number of grid rows    */
+  unsigned int cols; /* Number of grid columns */
+
+  /* Runtime information */
+  unsigned int cells_processed; /* The number of cells already processed */
+  unsigned int cell_current;    /* The current processed cell */
+
+  /* Data arrays */
   unsigned char *cell_collapsed;     /* Is the current cell collapsed? Size = rows * cols */
   unsigned char *cell_entropy_count; /* How many entropy/options does the cell have? Size = rows * cols */
   unsigned char *cell_entropies;     /* The entropy array per cell & tile. Size = rows * cols * tile_count */
@@ -403,7 +409,8 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
   while (1)
   {
     int min_entropy = 255;
-    int candidates[16 * 16];
+    /* TODO: no stack allocation here */
+    int candidates[32 * 32];
     int n_candidates = 0;
     int i;
     int chosen_idx;
