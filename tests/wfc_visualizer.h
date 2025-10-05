@@ -279,5 +279,5 @@ static void wfc_export_ppm(
     fclose(fp);
     free(buffer);
 
-    printf("Exported grid with highlights to %s (%dx%d)\n", filename, img_w, img_h);
+    printf("[wfc] exported grid to %s (%dx%d)\n", filename, img_w, img_h);
 }
