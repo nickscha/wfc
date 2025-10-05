@@ -10,10 +10,10 @@ LICENSE
   See end of file for detailed license information.
 
 */
-#include "../wfc.h"       /* Wave Function Collapse */
-#include "../deps/test.h" /* Simple Testing framework    */
-#include "../deps/perf.h" /* Simple Performance profiler */
-#include "wfc_visualizer.h"
+#include "../wfc.h"         /* Wave Function Collapse      */
+#include "../deps/test.h"   /* Simple Testing framework    */
+#include "../deps/perf.h"   /* Simple Performance profiler */
+#include "wfc_visualizer.h" /* Export grid as ppm file     */
 
 static void wfc_test_socket(void)
 {
