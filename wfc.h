@@ -138,7 +138,7 @@ WFC_API WFC_INLINE wfc_socket_8x07 wfc_socket_reverse(wfc_socket_8x07 s, int soc
 }
 
 /* #############################################################################
- * # Grid & Tile initialization & setup
+ * # Tile initialization and setup
  * #############################################################################
  */
 /* Data-oriented SoA tiles struct */
@@ -152,17 +152,6 @@ typedef struct wfc_tiles
 
 } wfc_tiles;
 
-typedef struct wfc_grid
-{
-  unsigned int rows;                 /* Number of grid rows    */
-  unsigned int cols;                 /* Number of grid columns */
-  unsigned int cell_current;         /* The current processed cell */
-  unsigned char *cell_collapsed;     /* Is the current cell collapsed? Size = rows * cols */
-  unsigned char *cell_entropy_count; /* How many entropy/options does the cell have? Size = rows * cols */
-  unsigned char *cell_entropies;     /* The entropy array per cell & tile. Size = rows * cols * tile_count */
-
-} wfc_grid;
-
 WFC_API WFC_INLINE int wfc_tiles_memory_size(wfc_tiles *tiles, unsigned int *tiles_memory_size)
 {
   unsigned int base_size = (unsigned int)sizeof(unsigned int);
@@ -175,24 +164,6 @@ WFC_API WFC_INLINE int wfc_tiles_memory_size(wfc_tiles *tiles, unsigned int *til
   *tiles_memory_size = base_size * tiles->tile_count +                         /* tile_ids */
                        base_size * tiles->tile_count * tiles->tile_edge_count; /* tile_edge_sockets */
 
-  return 1;
-}
-
-WFC_API WFC_INLINE int wfc_grid_memory_size(wfc_grid *grid, wfc_tiles *tiles, unsigned int *grid_memory_size)
-{
-  unsigned int base_size = (unsigned int)sizeof(unsigned char);
-  unsigned int grid_size = 0;
-
-  if (!grid || !tiles || !grid_memory_size || grid->rows == 0 || grid->cols == 0 || tiles->tile_count == 0)
-  {
-    return 0;
-  }
-
-  grid_size = grid->cols * grid->rows;
-
-  *grid_memory_size = base_size * grid_size +                    /* cell_collapsed */
-                      base_size * grid_size +                    /* cell_entropy_count */
-                      base_size * grid_size * tiles->tile_count; /* cell_entropies */
   return 1;
 }
 
@@ -210,6 +181,39 @@ WFC_API WFC_INLINE int wfc_tiles_initialize(wfc_tiles *tiles, unsigned char *til
   ptr += sizeof(unsigned int) * tiles->tile_count;
   tiles->tile_edge_sockets = (wfc_socket_8x07 *)ptr;
 
+  return 1;
+}
+
+/* #############################################################################
+ * # Grid initialization and setup
+ * #############################################################################
+ */
+typedef struct wfc_grid
+{
+  unsigned int rows;                 /* Number of grid rows    */
+  unsigned int cols;                 /* Number of grid columns */
+  unsigned int cell_current;         /* The current processed cell */
+  unsigned char *cell_collapsed;     /* Is the current cell collapsed? Size = rows * cols */
+  unsigned char *cell_entropy_count; /* How many entropy/options does the cell have? Size = rows * cols */
+  unsigned char *cell_entropies;     /* The entropy array per cell & tile. Size = rows * cols * tile_count */
+
+} wfc_grid;
+
+WFC_API WFC_INLINE int wfc_grid_memory_size(wfc_grid *grid, wfc_tiles *tiles, unsigned int *grid_memory_size)
+{
+  unsigned int base_size = (unsigned int)sizeof(unsigned char);
+  unsigned int grid_size = 0;
+
+  if (!grid || !tiles || !grid_memory_size || grid->rows == 0 || grid->cols == 0 || tiles->tile_count == 0)
+  {
+    return 0;
+  }
+
+  grid_size = grid->cols * grid->rows;
+
+  *grid_memory_size = base_size * grid_size +                    /* cell_collapsed */
+                      base_size * grid_size +                    /* cell_entropy_count */
+                      base_size * grid_size * tiles->tile_count; /* cell_entropies */
   return 1;
 }
 
