@@ -53,6 +53,21 @@ static void wfc_test_socket(void)
   assert(wfc_socket_unpack(socket, 2) == 0);
 }
 
+static void wfc_test_tile_stack_alloc(void)
+{
+#define TILES_CAPACTIY 128
+#define TILES_EDGE_COUNT 4
+
+  unsigned char tiles_memory[WFC_TILES_MEMORY_SIZE(TILES_CAPACTIY, TILES_EDGE_COUNT)];
+
+  wfc_tiles tiles = {0};
+  tiles.tile_capacity = TILES_CAPACTIY;     /* 5 tiles */
+  tiles.tile_edge_count = TILES_EDGE_COUNT; /* 4 edges */
+  tiles.tile_edge_socket_count = 3;         /* 3 values per edge */
+
+  assert(wfc_tiles_initialize(&tiles, tiles_memory, (unsigned int)(sizeof(tiles_memory) / sizeof(tiles_memory[0]))));
+}
+
 static void wfc_test_tile_rotation_even_sockets(void)
 {
   unsigned char *tiles_memory;
@@ -377,6 +392,7 @@ static void wfc_test_simple_tiles(void)
 int main(void)
 {
   wfc_test_socket();
+  wfc_test_tile_stack_alloc();
   wfc_test_tile_rotation_even_sockets();
   wfc_test_tile_rotation_uneven_sockets();
   wfc_test_simple_tiles();
