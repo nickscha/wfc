@@ -164,7 +164,7 @@ WFC_API WFC_INLINE int wfc_tiles_add_tile(
   unsigned int tile_edge_count = tiles->tile_edge_count;
 
   /* not enough space in buffer */
-  if (tiles->tile_size + 1 + tile_rotations >= tiles->tile_capacity)
+  if (tiles->tile_size + 1 + tile_rotations > tiles->tile_capacity)
   {
     return 1;
   }
@@ -199,7 +199,7 @@ WFC_API WFC_INLINE int wfc_tiles_add_tile(
 
       /* Rotate the socket values clockwise */
       {
-        unsigned int src_base = (tiles->tile_size - 1 - rotation) * tile_edge_count;
+        unsigned int src_base = (tiles->tile_size - 1) * tile_edge_count;
         unsigned int dst_base = tiles->tile_size * tile_edge_count;
         unsigned int j;
 
@@ -280,8 +280,8 @@ WFC_API WFC_INLINE int wfc_grid_memory_size(wfc_grid *grid, wfc_tiles *tiles, un
 
   grid_size = grid->cols * grid->rows;
 
-  *grid_memory_size = base_size * grid_size +                    /* cell_collapsed */
-                      base_size * grid_size +                    /* cell_entropy_count */
+  *grid_memory_size = base_size * grid_size +                   /* cell_collapsed */
+                      base_size * grid_size +                   /* cell_entropy_count */
                       base_size * grid_size * tiles->tile_size; /* cell_entropies */
   return 1;
 }
