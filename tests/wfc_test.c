@@ -59,7 +59,7 @@ static void wfc_test_simple_tiles(void)
   unsigned int tiles_memory_size = 0;
 
   wfc_tiles tiles = {0};
-  tiles.tile_count = 5;             /* 5 tiles */
+  tiles.tile_capacity = 5;          /* 5 tiles */
   tiles.tile_edge_count = 4;        /* 4 edges */
   tiles.tile_edge_socket_count = 3; /* 3 values per edge */
 
@@ -101,6 +101,8 @@ static void wfc_test_simple_tiles(void)
   tiles.tile_edge_sockets[18] = wfc_socket_pack_4(0, 1, 0, 0); /* Bottom */
   tiles.tile_edge_sockets[19] = wfc_socket_pack_4(0, 1, 0, 0); /* Left   */
 
+  tiles.tile_size = 5;
+
   {
     unsigned int retries = 0;
     unsigned char *grid_memory;
@@ -121,9 +123,9 @@ static void wfc_test_simple_tiles(void)
 
     assert(wfc_grid_initialize(&grid, &tiles, grid_memory, grid_memory_size));
     assert(grid.cell_collapsed[0] == 0);
-    assert(grid.cell_entropy_count[0] == tiles.tile_count);
+    assert(grid.cell_entropy_count[0] == tiles.tile_size);
     assert(grid.cell_collapsed[grid.rows * grid.cols - 1] == 0);
-    assert(grid.cell_entropy_count[grid.rows * grid.cols - 1] == tiles.tile_count);
+    assert(grid.cell_entropy_count[grid.rows * grid.cols - 1] == tiles.tile_size);
 
     /* Run WFC */
     wfc_seed_lcg = 42;
