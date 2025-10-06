@@ -144,6 +144,10 @@ WFC_API WFC_INLINE wfc_socket_8x07 wfc_socket_reverse(wfc_socket_8x07 s, unsigne
 /* Data-oriented SoA tiles struct */
 typedef struct wfc_tiles
 {
+  /* Initialization Flags */
+  unsigned int tiles_initialized;
+  unsigned int tiles_compatible_tiles_computed;
+
   /* Configuration */
   unsigned int tile_capacity;               /* Maximum number of tiles that can be stored */
   unsigned int tile_count;                  /* Current number of tiles */
@@ -155,10 +159,10 @@ typedef struct wfc_tiles
   unsigned int *tile_rotations; /* Size: tile_count. For each tile id what rotation did we apply (0=no rotation, 1=1 rotation, ...) */
 
   /* Data arrays per tile and tile_direction_count */
-  wfc_socket_8x07 *tile_direction_sockets; /* Size: tile_count * tile_direction_count. The sockets (e.g flags) for each edge */
+  wfc_socket_8x07 *tile_direction_sockets; /* Size: tile_count * tile_direction_count. The sockets (e.g flags) for each direction */
 
   /* Data array per tile, tile_direction_count and tile_count */
-  unsigned int *tile_direction_compatible_tiles; /* Size: tile_count * tile_direction_count * tile_count. What tiles are allowed for each edge of this current tile */
+  unsigned int *tile_direction_compatible_tiles; /* Size: tile_count * tile_direction_count * tile_count. What tiles are allowed for each direction of this current tile */
 
 } wfc_tiles;
 
@@ -173,6 +177,9 @@ typedef struct wfc_tiles
   ((unsigned int)(sizeof(unsigned int) * ((tile_capacity) * 2                        /* ids + rotations */ \
                                           + (tile_capacity) * (tile_direction_count) /* sockets */         \
                                           + (tile_capacity) * (tile_direction_count) * (tile_capacity)) /* compatible tiles */))
+
+#define WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(tiles_ptr, tile_index, dir_index) \
+  (((tile_index) * (tiles_ptr)->tile_direction_count + (dir_index)) * (tiles_ptr)->tile_count)
 
 WFC_API WFC_INLINE int wfc_tiles_initialize(wfc_tiles *tiles, unsigned char *tiles_memory, unsigned int tiles_memory_size)
 {
@@ -194,6 +201,8 @@ WFC_API WFC_INLINE int wfc_tiles_initialize(wfc_tiles *tiles, unsigned char *til
 
   tiles->tile_direction_compatible_tiles = (unsigned int *)ptr;
 
+  tiles->tiles_initialized = 1;
+
   return 1;
 }
 
@@ -207,7 +216,7 @@ WFC_API WFC_INLINE int wfc_tiles_add_tile(
   unsigned int tile_direction_count;
 
   /* Invalid arguments */
-  if (!tiles || tiles->tile_capacity == 0 || !tile_direction_sockets)
+  if (!tiles || !tiles->tiles_initialized || tiles->tile_capacity == 0 || !tile_direction_sockets)
   {
     return 0;
   }
@@ -224,7 +233,7 @@ WFC_API WFC_INLINE int wfc_tiles_add_tile(
   tiles->tile_asset_ids[tiles->tile_count] = tile_id;
   tiles->tile_rotations[tiles->tile_count] = 0;
 
-  /* Add the sockets for each edge of the tile */
+  /* Add the sockets for each direction of the tile */
   for (i = 0; i < tile_direction_count; ++i)
   {
     tiles->tile_direction_sockets[(tiles->tile_count * tile_direction_count) + i] = tile_direction_sockets[i];
@@ -275,7 +284,7 @@ WFC_API WFC_INLINE int wfc_tiles_compute_compatible_tiles(wfc_tiles *tiles)
   unsigned int tile_count;
   unsigned int dir_count;
 
-  if (!tiles || !tiles->tile_direction_compatible_tiles || tiles->tile_count == 0 || tiles->tile_direction_count == 0)
+  if (!tiles || !tiles->tiles_initialized || !tiles->tile_direction_compatible_tiles || tiles->tile_count < 1 || tiles->tile_direction_count < 1)
   {
     return 0;
   }
@@ -285,30 +294,25 @@ WFC_API WFC_INLINE int wfc_tiles_compute_compatible_tiles(wfc_tiles *tiles)
 
   for (a = 0; a < tile_count; ++a)
   {
+    wfc_socket_8x07 *a_sockets = &tiles->tile_direction_sockets[a * dir_count];
+
     for (d = 0; d < dir_count; ++d)
     {
+      wfc_socket_8x07 socket_a = a_sockets[d];
+
       unsigned int opp_dir = (d + dir_count / 2) % dir_count;
       unsigned int offset = (a * dir_count + d) * tile_count;
 
       for (b = 0; b < tile_count; ++b)
       {
-        wfc_socket_8x07 socket_a;
-        wfc_socket_8x07 socket_b;
+        wfc_socket_8x07 socket_b = tiles->tile_direction_sockets[b * dir_count + opp_dir];
 
-        socket_a = tiles->tile_direction_sockets[a * dir_count + d];
-        socket_b = tiles->tile_direction_sockets[b * dir_count + opp_dir];
-
-        if (wfc_socket_reverse(socket_b, tiles->tile_direction_socket_count) == socket_a)
-        {
-          tiles->tile_direction_compatible_tiles[offset + b] = 1; /* compatible */
-        }
-        else
-        {
-          tiles->tile_direction_compatible_tiles[offset + b] = 0; /* not compatible */
-        }
+        tiles->tile_direction_compatible_tiles[offset + b] = (wfc_socket_reverse(socket_b, tiles->tile_direction_socket_count) == socket_a);
       }
     }
   }
+
+  tiles->tiles_compatible_tiles_computed = 1;
 
   return 1;
 }
@@ -411,87 +415,144 @@ WFC_API WFC_INLINE void wfc_grid_collapse_current_cell(wfc_grid *grid, wfc_tiles
   grid->cells_processed++;
 }
 
-/* Temporary for testing */
-#include "stdio.h"
+WFC_API WFC_INLINE int wfc_grid_neighbour_index(wfc_grid *grid, int index, unsigned int dir, unsigned int dir_count)
+{
+  int x, y;
+  wfc_grid_coords_at(index, (int)grid->cols, &x, &y);
+
+  (void)dir_count;
+
+  switch (dir)
+  {
+  case 0:
+    y -= 1;
+    break; /* up */
+  case 1:
+    x += 1;
+    break; /* right */
+  case 2:
+    y += 1;
+    break; /* down */
+  case 3:
+    x -= 1;
+    break; /* left */
+  default:
+    return -1; /* not handled (for >4 dirs extend this) */
+  }
+
+  if (x < 0 || y < 0 || x >= (int)grid->cols || y >= (int)grid->rows)
+  {
+    return -1;
+  }
+
+  return wfc_grid_index_at(x, y, (int)grid->cols);
+}
 
 /* #############################################################################
  * # Wave Function Collapse Algorithm
  * #############################################################################
  */
-WFC_API WFC_INLINE void wfc_update_neighbour_entropies(wfc_grid *grid, wfc_tiles *tiles)
+WFC_API WFC_INLINE void wfc_update_neighbour_entropies(wfc_grid *grid, wfc_tiles *tiles, unsigned int collapsed_index)
 {
-  unsigned int collapsed_cell_index = grid->cell_index_current;
+  unsigned int dir, dcount, tcount;
+  unsigned int collapsed_tile;
+  unsigned int tile_index;
+  unsigned int neighbour_index;
 
-  /* top:*/
-  if (collapsed_cell_index >= grid->cols)
+  dcount = tiles->tile_direction_count;
+  tcount = tiles->tile_count;
+  collapsed_tile = grid->cell_entropies[collapsed_index * tcount + 0];
+
+  for (dir = 0; dir < dcount; ++dir)
   {
-    wfc_socket_8x07 collapsed_cell_top_socket = tiles->tile_direction_sockets[grid->cell_entropies[collapsed_cell_index * tiles->tile_count] * tiles->tile_direction_count];
+    neighbour_index = (unsigned int)wfc_grid_neighbour_index(grid, (int)collapsed_index, dir, dcount);
 
-    unsigned int cell_top_index = collapsed_cell_index - grid->cols;
+    if (neighbour_index == (unsigned int)-1)
+      continue;
 
-    if (!grid->cell_collapsed[cell_top_index])
+    if (grid->cell_collapsed[neighbour_index])
+      continue;
+
+    /* prune incompatible tiles */
     {
-      unsigned int entropy = 0;
+      unsigned char new_count = 0;
+      unsigned char old_count = grid->cell_entropy_count[neighbour_index];
 
-      for (entropy = 0; entropy < (unsigned int)grid->cell_entropy_count[cell_top_index]; ++entropy)
+      for (tile_index = 0; tile_index < old_count; ++tile_index)
       {
-        unsigned int tile_index = grid->cell_entropies[entropy];
+        unsigned int candidate_tile = grid->cell_entropies[neighbour_index * tcount + tile_index];
+        unsigned int compatible = tiles->tile_direction_compatible_tiles[(collapsed_tile * dcount + dir) * tcount + candidate_tile];
 
-        /* bottom edge socket */
-        wfc_socket_8x07 tile_bottom_socket = tiles->tile_direction_sockets[tile_index * tiles->tile_direction_count + 2];
-
-        if (wfc_socket_reverse(tile_bottom_socket, tiles->tile_direction_socket_count) != collapsed_cell_top_socket)
+        if (compatible)
         {
-          printf("tile does not match\n");
+          grid->cell_entropies[neighbour_index * tcount + new_count++] = (unsigned char)candidate_tile;
         }
       }
+
+      grid->cell_entropy_count[neighbour_index] = new_count;
     }
   }
-
-  /* bottom:
-  if (collapsed_cell_index < grid->rows * grid->cols - 1)
-  {
-    unsigned int cell_bottom_index = collapsed_cell_index + grid->cols;
-
-    if (!grid->cell_collapsed[cell_bottom_index])
-    {
-    }
-  }
-  */
 }
 
 WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
 {
-  /* No valid data passed */
-  if (!grid || !tiles || grid->rows < 1 || grid->cols < 1 || tiles->tile_count < 1)
+  unsigned int total_cells;
+  unsigned int iteration;
+
+  if (!grid || !tiles || !tiles->tiles_initialized || grid->rows < 1 || grid->cols < 1 || tiles->tile_count < 1)
   {
     return 0;
   }
 
+  if (!tiles->tiles_compatible_tiles_computed)
+  {
+    wfc_tiles_compute_compatible_tiles(tiles);
+  }
+
+  total_cells = grid->rows * grid->cols;
   grid->cells_processed = 0;
 
-  /* (1) Set a random cell as collapsed */
+  /* Repeat until all cells are collapsed */
+  for (iteration = 0; iteration < total_cells; ++iteration)
   {
-    unsigned int random_cell_index = wfc_randi_range(0, grid->cols * grid->rows - 1);
-    unsigned int random_tile = wfc_randi_range(0, tiles->tile_count);
+    unsigned int lowest_entropy = 255;
+    unsigned int lowest_cell = 0;
+    unsigned int i;
 
-    printf("[wfc] cell_index: %d, tile_choosen: %d\n", random_cell_index, random_tile);
+    /* 1. Find the non-collapsed cell with the lowest entropy */
+    for (i = 0; i < total_cells; ++i)
+    {
+      unsigned char count = grid->cell_entropy_count[i];
+      if (!grid->cell_collapsed[i] && count > 0 && count < lowest_entropy)
+      {
+        lowest_entropy = count;
+        lowest_cell = i;
+      }
+    }
 
-    grid->cell_index_current = random_cell_index;
-    wfc_grid_collapse_current_cell(grid, tiles, random_tile);
-  }
+    /* no cell found (finished or stuck) */
+    if (lowest_entropy == 255)
+    {
+      break;
+    }
 
-  /* (2) Update all neighbour cells and set the entropy accordingly */
-  {
-    wfc_update_neighbour_entropies(grid, tiles);
-  }
+    /* 2. Randomly choose one tile from available entropies */
+    {
+      unsigned int choice_index;
 
-  /* (3) Choose the cell with lowest entropy (if multiple cells with same entropy_count choose randomly one cell) */
-  {
-  }
+      choice_index = wfc_randi_range(0, lowest_entropy);
 
-  /* (4) Choose a random possible tile for the lowest entropy cell  */
-  {
+      if (choice_index >= lowest_entropy)
+      {
+        choice_index = lowest_entropy - 1;
+      }
+
+      grid->cell_index_current = lowest_cell;
+      wfc_grid_collapse_current_cell(grid, tiles, choice_index);
+    }
+
+    /* 3. Propagate constraints */
+    wfc_update_neighbour_entropies(grid, tiles, grid->cell_index_current);
   }
 
   return 1;

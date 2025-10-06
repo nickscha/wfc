@@ -343,9 +343,6 @@ static void wfc_test_tile_compute_compatible_tiles(void)
   /* Compute possible adjacent tiles for each direction of each current tile */
   assert(wfc_tiles_compute_compatible_tiles(&tiles));
 
-#define WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(tiles_ptr, tile_index, dir_index) \
-  (((tile_index) * (tiles_ptr)->tile_direction_count + (dir_index)) * (tiles_ptr)->tile_count)
-
   {
     /* Tile 0. Direction top (0). Two compatible tiles expected:
      "   "
@@ -423,6 +420,7 @@ static void wfc_test_simple_tiles(void)
     wfc_tiles_add_tile(&tiles, 1, socket_buffer, 3);
 
     assert(tiles.tile_count == 5);
+    assert(wfc_tiles_compute_compatible_tiles(&tiles));
   }
 
   {
@@ -449,14 +447,15 @@ static void wfc_test_simple_tiles(void)
     assert(grid.cell_entropy_count[grid.rows * grid.cols - 1] == tiles.tile_count);
 
     /* Run WFC */
-    wfc_seed_lcg = 42;
+    wfc_seed_lcg = 1337;
 
+    PERF_PROFILE_WITH_NAME({
     while (!wfc(&grid, &tiles))
     {
       wfc_grid_initialize(&grid, &tiles, grid_memory, grid_memory_size);
       wfc_seed_lcg += 1; /* increment seed if WFC fails */
       retries++;
-    }
+    } }, "wfc_solve");
 
     printf("[wfc] solved grid after %d retries\n", retries);
 
