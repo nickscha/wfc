@@ -505,11 +505,11 @@ WFC_API WFC_INLINE void wfc_update_neighbour_entropies(wfc_grid *grid, wfc_tiles
     /* Filter neighbour entropies */
     for (k = 0; k < grid->cell_entropy_count[neighbour]; ++k)
     {
-      unsigned int tile = grid->cell_entropies[neighbour * (int) tile_count + (int) k];
+      unsigned int tile = grid->cell_entropies[neighbour * (int)tile_count + (int)k];
 
       if (combined_mask[tile / 32] & (1u << (tile % 32)))
       {
-        grid->cell_entropies[neighbour * (int) tile_count + new_count++] = (unsigned char)tile;
+        grid->cell_entropies[neighbour * (int)tile_count + new_count++] = (unsigned char)tile;
       }
     }
 
@@ -546,10 +546,19 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
     for (i = 0; i < total_cells; ++i)
     {
       unsigned char count = grid->cell_entropy_count[i];
-      if (!grid->cell_collapsed[i] && count > 0 && count < lowest_entropy)
+
+      if (!grid->cell_collapsed[i])
       {
-        lowest_entropy = count;
-        lowest_cell = i;
+        if (count == 0)
+        {
+          return 0; /* This cell has no valid tiles → unsolvable */
+        }
+        
+        if (count < lowest_entropy)
+        {
+          lowest_entropy = count;
+          lowest_cell = i;
+        }
       }
     }
 
