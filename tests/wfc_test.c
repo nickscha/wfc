@@ -401,8 +401,8 @@ static void wfc_test_simple_tiles(void)
     unsigned int grid_memory_size = 0;
 
     wfc_grid grid = {0};
-    grid.cols = 16;
-    grid.rows = 16;
+    grid.cols = 128;
+    grid.rows = 128;
 
     grid_memory_size = WFC_GRID_MEMORY_SIZE(grid.rows, grid.cols, tiles.tile_count);
 
@@ -424,10 +424,39 @@ static void wfc_test_simple_tiles(void)
     PERF_PROFILE_WITH_NAME({
     while (!wfc(&grid, &tiles))
     {
+      printf("[wfc] retry\n");
+
       wfc_grid_initialize(&grid, &tiles, grid_memory, grid_memory_size);
-      wfc_seed_lcg += 1; /* increment seed if WFC fails */
+      wfc_seed_lcg += 1;
       retries++;
-    } }, "wfc_solve");
+    } }, "wfc_solve_simple_tiles");
+
+    {
+      int idx;
+      int uncollapsed_cells = 0;
+      int unsolvable_cells = 0;
+      int unfinished_cells = 0;
+
+      for (idx = 0; idx < (int)(grid.cols * grid.rows); ++idx)
+      {
+        if (!grid.cell_collapsed[idx])
+        {
+          uncollapsed_cells++;
+        }
+        else if (grid.cell_entropy_count[idx] == 0)
+        {
+          unsolvable_cells++;
+        }
+        else if (grid.cell_entropy_count[idx] > 1)
+        {
+          unfinished_cells++;
+        }
+      }
+
+      assert(uncollapsed_cells == 0);
+      assert(unsolvable_cells == 0);
+      assert(unfinished_cells == 0);
+    }
 
     printf("[wfc] solved grid after %d retries\n", retries);
 
@@ -466,7 +495,7 @@ static void wfc_test_simple_tiles(void)
       tile_chars[3] = tile_3;
       tile_chars[4] = tile_4;
 
-      wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 8, 1, 0, 3, 3);
+      wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 2, 1, 0, 3, 3);
     }
   }
 }
