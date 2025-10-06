@@ -425,8 +425,8 @@ static void wfc_test_simple_tiles(void)
     unsigned int grid_memory_size = 0;
 
     wfc_grid grid = {0};
-    grid.cols = 16;
-    grid.rows = 16;
+    grid.cols = 128;
+    grid.rows = 128;
 
     grid_memory_size = WFC_GRID_MEMORY_SIZE(grid.rows, grid.cols, tiles.tile_count);
 
@@ -453,7 +453,7 @@ static void wfc_test_simple_tiles(void)
       wfc_grid_initialize(&grid, &tiles, grid_memory, grid_memory_size);
       wfc_seed_lcg += 1;
       retries++;
-    } }, "wfc_solve_simple_tiles");
+    } }, "wfc_solve_5_tiles_128x128_grid");
 
     {
       int idx;
@@ -519,7 +519,7 @@ static void wfc_test_simple_tiles(void)
       tile_chars[3] = tile_3;
       tile_chars[4] = tile_4;
 
-      wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 8, 1, 0, 3, 3);
+      wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 2, 1, 0, 3, 3);
     }
   }
 }
