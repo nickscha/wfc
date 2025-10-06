@@ -501,35 +501,24 @@ WFC_API WFC_INLINE void wfc_update_neighbour_entropies(wfc_grid *grid, wfc_tiles
   {
     int neighbour = wfc_grid_neighbour_index(grid, (int)collapsed_index, d, dir_count);
 
-    unsigned int combined_mask[32]; /* Max 1024 tiles with 32-bit words */
     unsigned int *mask_ptr;
     unsigned char new_count = 0;
-    unsigned int w, k;
+    unsigned int k;
 
     if (neighbour < 0 || grid->cell_collapsed[neighbour])
     {
       continue;
     }
 
-    for (w = 0; w < mask_words; ++w)
-    {
-      combined_mask[w] = 0;
-    }
-
     /* Combine masks from all tiles in collapsed cell (here only 1 tile) */
     mask_ptr = &tiles->tile_direction_compatible_masks[(collapsed_tile * dir_count + d) * mask_words];
-
-    for (w = 0; w < mask_words; ++w)
-    {
-      combined_mask[w] |= mask_ptr[w];
-    }
 
     /* Filter neighbour entropies */
     for (k = 0; k < grid->cell_entropy_count[neighbour]; ++k)
     {
       unsigned int tile = grid->cell_entropies[neighbour * (int)tile_count + (int)k];
 
-      if (combined_mask[tile / 32] & (1u << (tile % 32)))
+      if (mask_ptr[tile / 32] & (1u << (tile % 32)))
       {
         grid->cell_entropies[neighbour * (int)tile_count + new_count++] = (unsigned char)tile;
       }
