@@ -53,33 +53,61 @@ static void wfc_test_socket(void)
   assert(wfc_socket_unpack(socket, 2) == 0);
 }
 
+static void wfc_test_grid_incides(void)
+{
+  int x = 0;
+  int y = 0;
+  int cols = 4;
+  int cell_index = wfc_grid_index_at(2, 2, cols);
+
+  /* base */
+  wfc_grid_coords_at(cell_index, cols, &x, &y);
+  assert(x == 2 && y == 2);
+
+  /* top */
+  wfc_grid_coords_at(cell_index - cols, cols, &x, &y);
+  assert(x == 2 && y == 1);
+
+  /* bottom */
+  wfc_grid_coords_at(cell_index + cols, cols, &x, &y);
+  assert(x == 2 && y == 3);
+
+  /* left */
+  wfc_grid_coords_at(cell_index - 1, cols, &x, &y);
+  assert(x == 1 && y == 2);
+
+  /* right */
+  wfc_grid_coords_at(cell_index + 1, cols, &x, &y);
+  assert(x == 3 && y == 2);
+}
+
 static void wfc_test_tile_stack_alloc(void)
 {
 #define TILES_CAPACTIY 128
-#define TILES_EDGE_COUNT 4
+#define TILES_DIRECTION_COUNT 4
 
-  unsigned char tiles_memory[WFC_TILES_MEMORY_SIZE(TILES_CAPACTIY, TILES_EDGE_COUNT)];
+  unsigned char tiles_memory[WFC_TILES_MEMORY_SIZE(TILES_CAPACTIY, TILES_DIRECTION_COUNT)];
 
   wfc_tiles tiles = {0};
-  tiles.tile_capacity = TILES_CAPACTIY;     /* 5 tiles */
-  tiles.tile_edge_count = TILES_EDGE_COUNT; /* 4 edges */
-  tiles.tile_edge_socket_count = 3;         /* 3 values per edge */
+  tiles.tile_capacity = TILES_CAPACTIY;               /* 5 tiles */
+  tiles.tile_direction_count = TILES_DIRECTION_COUNT; /* 4 directions */
+  tiles.tile_direction_socket_count = 3;              /* 3 values per direction */
 
   assert(wfc_tiles_initialize(&tiles, tiles_memory, (unsigned int)(sizeof(tiles_memory) / sizeof(tiles_memory[0]))));
 }
 
-static void wfc_test_tile_rotation_even_sockets(void)
+static void wfc_test_tile_rotation_symmetrical_sockets(void)
 {
   unsigned char *tiles_memory;
   unsigned int tiles_memory_size = 0;
   wfc_socket_8x07 socket_buffer[4];
 
   wfc_tiles tiles = {0};
-  tiles.tile_capacity = 5;          /* 5 tiles */
-  tiles.tile_edge_count = 4;        /* 4 edges */
-  tiles.tile_edge_socket_count = 3; /* 3 values per edge */
+  tiles.tile_capacity = 5;               /* 5 tiles */
+  tiles.tile_direction_count = 4;        /* 4 directions */
+  tiles.tile_direction_socket_count = 3; /* 3 values per direction */
 
-  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_edge_count);
+  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_direction_count);
   tiles_memory = malloc(tiles_memory_size);
 
   assert(wfc_tiles_initialize(&tiles, tiles_memory, tiles_memory_size));
@@ -99,7 +127,7 @@ static void wfc_test_tile_rotation_even_sockets(void)
   /* Add tile without additional rotations */
   wfc_tiles_add_tile(&tiles, 0, socket_buffer, 0);
 
-  /* Tile 1 (cross, rotate 3 times for each edge):
+  /* Tile 1 (cross, rotate 3 times for each direction):
      " # "
      "###"
      "   "
@@ -113,11 +141,11 @@ static void wfc_test_tile_rotation_even_sockets(void)
   wfc_tiles_add_tile(&tiles, 1, socket_buffer, 3);
 
   assert(tiles.tile_count == 5);
-  assert(tiles.tile_ids[0] == 0);
-  assert(tiles.tile_ids[1] == 1);
-  assert(tiles.tile_ids[2] == 1);
-  assert(tiles.tile_ids[3] == 1);
-  assert(tiles.tile_ids[4] == 1);
+  assert(tiles.tile_asset_ids[0] == 0);
+  assert(tiles.tile_asset_ids[1] == 1);
+  assert(tiles.tile_asset_ids[2] == 1);
+  assert(tiles.tile_asset_ids[3] == 1);
+  assert(tiles.tile_asset_ids[4] == 1);
   assert(tiles.tile_rotations[0] == 0);
   assert(tiles.tile_rotations[1] == 0);
   assert(tiles.tile_rotations[2] == 1);
@@ -129,56 +157,56 @@ static void wfc_test_tile_rotation_even_sockets(void)
      "###"
      "   "
   */
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(0, 0, 0, 0));
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(0, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(0, 1, 0, 0));
 
   /* Check first rotated tile 1 sockets
      " # "
      " ##"
      " # "
    */
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(0, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(0, 0, 0, 0));
 
   /* Check second rotated tile 1 sockets
      "   "
      "###"
      " # "
    */
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(0, 0, 0, 0));
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(0, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(0, 1, 0, 0));
 
   /* Check third rotated tile 1 sockets
      " # "
      "## "
      " # "
    */
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(0, 0, 0, 0));
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(0, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(0, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(0, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(0, 1, 0, 0));
 
   free(tiles_memory);
 }
 
-static void wfc_test_tile_rotation_uneven_sockets(void)
+static void wfc_test_tile_rotation_asymmetrical_sockets(void)
 {
   unsigned char *tiles_memory;
   unsigned int tiles_memory_size = 0;
   wfc_socket_8x07 socket_buffer[4];
 
   wfc_tiles tiles = {0};
-  tiles.tile_capacity = 5;          /* 5 tiles */
-  tiles.tile_edge_count = 4;        /* 4 edges */
-  tiles.tile_edge_socket_count = 3; /* 3 values per edge */
+  tiles.tile_capacity = 5;               /* 5 tiles */
+  tiles.tile_direction_count = 4;        /* 4 directions */
+  tiles.tile_direction_socket_count = 3; /* 3 values per direction */
 
-  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_edge_count);
+  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_direction_count);
   tiles_memory = malloc(tiles_memory_size);
 
   assert(wfc_tiles_initialize(&tiles, tiles_memory, tiles_memory_size));
@@ -198,7 +226,7 @@ static void wfc_test_tile_rotation_uneven_sockets(void)
   /* Add tile without additional rotations */
   wfc_tiles_add_tile(&tiles, 0, socket_buffer, 0);
 
-  /* Tile 1 (uneven, rotate 3 times for each edge):
+  /* Tile 1 (uneven, rotate 3 times for each direction):
      "## "
      "## "
      "  #"
@@ -212,11 +240,11 @@ static void wfc_test_tile_rotation_uneven_sockets(void)
   wfc_tiles_add_tile(&tiles, 1, socket_buffer, 3);
 
   assert(tiles.tile_count == 5);
-  assert(tiles.tile_ids[0] == 0);
-  assert(tiles.tile_ids[1] == 1);
-  assert(tiles.tile_ids[2] == 1);
-  assert(tiles.tile_ids[3] == 1);
-  assert(tiles.tile_ids[4] == 1);
+  assert(tiles.tile_asset_ids[0] == 0);
+  assert(tiles.tile_asset_ids[1] == 1);
+  assert(tiles.tile_asset_ids[2] == 1);
+  assert(tiles.tile_asset_ids[3] == 1);
+  assert(tiles.tile_asset_ids[4] == 1);
   assert(tiles.tile_rotations[0] == 0);
   assert(tiles.tile_rotations[1] == 0);
   assert(tiles.tile_rotations[2] == 1);
@@ -228,40 +256,123 @@ static void wfc_test_tile_rotation_uneven_sockets(void)
      "## "
      "  #"
   */
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(1, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(0, 0, 1, 0));
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(1, 0, 0, 0));
-  assert(tiles.tile_edge_sockets[(1 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(0, 1, 1, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(1, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(0, 0, 1, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(1, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(1 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(0, 1, 1, 0));
 
   /* Check first rotated tile 1 sockets
      " ##"
      " ##"
      "#  "
    */
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(0, 1, 1, 0));
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(1, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(0, 0, 1, 0));
-  assert(tiles.tile_edge_sockets[(2 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(1, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(0, 1, 1, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(1, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(0, 0, 1, 0));
+  assert(tiles.tile_direction_sockets[(2 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(1, 0, 0, 0));
 
   /* Check second rotated tile 1 sockets
      "#  "
      " ##"
      " ##"
    */
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(1, 0, 0, 0));
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(0, 1, 1, 0));
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(1, 1, 0, 0));
-  assert(tiles.tile_edge_sockets[(3 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(0, 0, 1, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(1, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(0, 1, 1, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(1, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(3 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(0, 0, 1, 0));
 
   /* Check third rotated tile 1 sockets
      "  #"
      "## "
      "## "
    */
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 0] == wfc_socket_pack_4(0, 0, 1, 0));
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 1] == wfc_socket_pack_4(1, 0, 0, 0));
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 2] == wfc_socket_pack_4(0, 1, 1, 0));
-  assert(tiles.tile_edge_sockets[(4 * tiles.tile_edge_count) + 3] == wfc_socket_pack_4(1, 1, 0, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 0] == wfc_socket_pack_4(0, 0, 1, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 1] == wfc_socket_pack_4(1, 0, 0, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 2] == wfc_socket_pack_4(0, 1, 1, 0));
+  assert(tiles.tile_direction_sockets[(4 * tiles.tile_direction_count) + 3] == wfc_socket_pack_4(1, 1, 0, 0));
+
+  free(tiles_memory);
+}
+
+static void wfc_test_tile_compute_compatible_tiles(void)
+{
+  unsigned char *tiles_memory;
+  unsigned int tiles_memory_size = 0;
+  wfc_socket_8x07 socket_buffer[4];
+
+  wfc_tiles tiles = {0};
+  tiles.tile_capacity = 5;               /* 5 tiles */
+  tiles.tile_direction_count = 4;        /* 4 directions */
+  tiles.tile_direction_socket_count = 3; /* 3 values per direction */
+
+  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_direction_count);
+  tiles_memory = malloc(tiles_memory_size);
+
+  assert(wfc_tiles_initialize(&tiles, tiles_memory, tiles_memory_size));
+
+  /* Setup tile sockets */
+
+  /* Tile 0 (empty, no rotation required):
+     "   "
+     "   "
+     "   "
+  */
+  socket_buffer[0] = wfc_socket_pack_4(0, 0, 0, 0); /* Top    */
+  socket_buffer[1] = wfc_socket_pack_4(0, 0, 0, 0); /* Right  */
+  socket_buffer[2] = wfc_socket_pack_4(0, 0, 0, 0); /* Bottom */
+  socket_buffer[3] = wfc_socket_pack_4(0, 0, 0, 0); /* Left   */
+
+  /* Add tile without additional rotations */
+  wfc_tiles_add_tile(&tiles, 0, socket_buffer, 0);
+
+  /* Tile 1 (uneven, rotate 3 times for each direction):
+     " # "
+     " ##"
+     " # "
+  */
+  socket_buffer[0] = wfc_socket_pack_4(0, 1, 0, 0); /* Top    */
+  socket_buffer[1] = wfc_socket_pack_4(0, 1, 0, 0); /* Right  */
+  socket_buffer[2] = wfc_socket_pack_4(0, 1, 0, 0); /* Bottom */
+  socket_buffer[3] = wfc_socket_pack_4(0, 0, 0, 0); /* Left   */
+
+  /* Add tile with three rotations */
+  wfc_tiles_add_tile(&tiles, 1, socket_buffer, 3);
+
+  assert(tiles.tile_count == 5);
+
+  /* Compute possible adjacent tiles for each direction of each current tile */
+  assert(wfc_tiles_compute_compatible_tiles(&tiles));
+
+#define WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(tiles_ptr, tile_index, dir_index) \
+  (((tile_index) * (tiles_ptr)->tile_direction_count + (dir_index)) * (tiles_ptr)->tile_count)
+
+  {
+    /* Tile 0. Direction top (0). Two compatible tiles expected:
+     "   "
+     "   "
+     "   "
+    */
+    unsigned int *tiles_compatible = &tiles.tile_direction_compatible_tiles[WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(&tiles, 0, 0)];
+
+    assert(tiles_compatible[0] == 1); /* Tile is compatible with itself */
+    assert(tiles_compatible[1] == 0);
+    assert(tiles_compatible[2] == 0);
+    assert(tiles_compatible[3] == 0);
+    assert(tiles_compatible[4] == 1);
+
+    /* Tile 1. Direction top (0). Three compatible tiles expected:
+       " # "
+       " ##"
+       " # "
+    */
+    tiles_compatible = &tiles.tile_direction_compatible_tiles[WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(&tiles, 1, 0)];
+
+    assert(tiles_compatible[0] == 0);
+    assert(tiles_compatible[1] == 1); /* Tile is compatible with itself */
+    assert(tiles_compatible[2] == 1);
+    assert(tiles_compatible[3] == 1);
+    assert(tiles_compatible[4] == 0);
+  }
 
   free(tiles_memory);
 }
@@ -272,11 +383,11 @@ static void wfc_test_simple_tiles(void)
   unsigned int tiles_memory_size = 0;
 
   wfc_tiles tiles = {0};
-  tiles.tile_capacity = 5;          /* 5 tiles */
-  tiles.tile_edge_count = 4;        /* 4 edges */
-  tiles.tile_edge_socket_count = 3; /* 3 values per edge */
+  tiles.tile_capacity = 5;               /* 5 tiles */
+  tiles.tile_direction_count = 4;        /* 4 directions */
+  tiles.tile_direction_socket_count = 3; /* 3 values per direction */
 
-  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_edge_count);
+  tiles_memory_size = WFC_TILES_MEMORY_SIZE(tiles.tile_capacity, tiles.tile_direction_count);
   tiles_memory = malloc(tiles_memory_size);
 
   assert(wfc_tiles_initialize(&tiles, tiles_memory, tiles_memory_size));
@@ -298,7 +409,7 @@ static void wfc_test_simple_tiles(void)
     /* Add tile without additional rotations */
     wfc_tiles_add_tile(&tiles, 0, socket_buffer, 0);
 
-    /* Tile 1 (cross, rotate 3 times for each edge):
+    /* Tile 1 (cross, rotate 3 times for each direction):
        " # "
        "###"
        "   "
@@ -392,9 +503,11 @@ static void wfc_test_simple_tiles(void)
 int main(void)
 {
   wfc_test_socket();
+  wfc_test_grid_incides();
   wfc_test_tile_stack_alloc();
-  wfc_test_tile_rotation_even_sockets();
-  wfc_test_tile_rotation_uneven_sockets();
+  wfc_test_tile_rotation_symmetrical_sockets();
+  wfc_test_tile_rotation_asymmetrical_sockets();
+  wfc_test_tile_compute_compatible_tiles();
   wfc_test_simple_tiles();
 
   return 0;
