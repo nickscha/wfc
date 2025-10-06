@@ -343,6 +343,30 @@ static void wfc_test_tile_compute_compatible_tiles(void)
   /* Compute possible adjacent tiles for each direction of each current tile */
   assert(wfc_tiles_compute_compatible_tiles(&tiles));
 
+  {
+    /* Tile 0. Direction top (0). Two compatible tiles expected:
+     "   "
+     "   "
+     "   "
+    */
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 0, 0)); /* Tile is compatible with itself */
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 0, 1));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 0, 2));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 0, 3));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 0, 4));
+
+    /* Tile 1. Direction top (0). Three compatible tiles expected:
+       " # "
+       " ##"
+       " # "
+    */
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 1, 0, 0));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 1, 0, 1)); /* Tile is compatible with itself */
+    assert(wfc_tiles_is_compatible_tile(&tiles, 1, 0, 2));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 1, 0, 3));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 1, 0, 4));
+  }
+
   free(tiles_memory);
 }
 
@@ -401,8 +425,8 @@ static void wfc_test_simple_tiles(void)
     unsigned int grid_memory_size = 0;
 
     wfc_grid grid = {0};
-    grid.cols = 128;
-    grid.rows = 128;
+    grid.cols = 16;
+    grid.rows = 16;
 
     grid_memory_size = WFC_GRID_MEMORY_SIZE(grid.rows, grid.cols, tiles.tile_count);
 
@@ -495,7 +519,7 @@ static void wfc_test_simple_tiles(void)
       tile_chars[3] = tile_3;
       tile_chars[4] = tile_4;
 
-      wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 2, 1, 0, 3, 3);
+      wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 8, 1, 0, 3, 3);
     }
   }
 }

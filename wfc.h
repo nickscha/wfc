@@ -167,20 +167,45 @@ typedef struct wfc_tiles
 
 } wfc_tiles;
 
-/* Tile memory size calculation
-   Computes the total bytes required for all tile arrays.
-
-   Usage:
-      unsigned int size = WFC_TILES_MEMORY_SIZE(tile_capacity, tile_direction_count);
-
-*/
 #define WFC_TILES_MEMORY_SIZE(tile_capacity, tile_direction_count)                                         \
   ((unsigned int)(sizeof(unsigned int) * ((tile_capacity) * 2                        /* ids + rotations */ \
                                           + (tile_capacity) * (tile_direction_count) /* sockets */         \
                                           + (tile_capacity) * (tile_direction_count) * ((tile_capacity + 31) / 32) /* mask words */)))
 
-#define WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(tiles_ptr, tile_index, dir_index) \
-  (((tile_index) * (tiles_ptr)->tile_direction_count + (dir_index)) * (tiles_ptr)->tile_count)
+WFC_API WFC_INLINE int wfc_tiles_is_compatible_tile(
+    wfc_tiles *tiles,
+    unsigned int tile_a,
+    unsigned int dir,
+    unsigned int tile_b)
+{
+  unsigned int mask_words;
+  unsigned int base;
+  unsigned int *mask;
+  unsigned int word_index;
+  unsigned int bit_index;
+  unsigned int word;
+
+  if (!tiles)
+  {
+    return 0;
+  }
+
+  mask_words = tiles->tile_direction_compatible_masks_words;
+  base = (tile_a * tiles->tile_direction_count + dir) * mask_words;
+  mask = &tiles->tile_direction_compatible_masks[base];
+
+  word_index = tile_b / 32;
+  bit_index = tile_b % 32;
+
+  word = mask[word_index];
+
+  if (word & (1u << bit_index))
+  {
+    return 1;
+  }
+
+  return 0;
+}
 
 WFC_API WFC_INLINE int wfc_tiles_initialize(wfc_tiles *tiles, unsigned char *tiles_memory, unsigned int tiles_memory_size)
 {
@@ -353,12 +378,6 @@ typedef struct wfc_grid
 
 } wfc_grid;
 
-/* Grid memory size calculation
-   Computes the total bytes required for the grid arrays.
-
-   Usage:
-      unsigned int size = WFC_GRID_MEMORY_SIZE(rows, cols, tile_count);
-*/
 #define WFC_GRID_MEMORY_SIZE(rows, cols, tile_count)                                                       \
   ((unsigned int)(sizeof(unsigned char) * (((rows) * (cols)) * 2 /* cell_collapsed + cell_entropy_count */ \
                                            + ((rows) * (cols)) * (tile_count) /* cell_entropies */)))
