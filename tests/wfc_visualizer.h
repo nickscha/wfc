@@ -196,30 +196,42 @@ static void wfc_export_ppm(
     /* Highlight one random cell for each tile_id */
     if (highlight_tiles)
     {
-        int t;
+        unsigned int total_cells = grid->rows * grid->cols;
+        unsigned int t;
 
-        for (t = 0; t < tile_chars_size; ++t)
+        for (t = 0; t < (unsigned int)tile_chars_size; ++t)
         {
-            int tries = 100; /* safety */
+            int tries = 1000; /* safety limit */
+            int found = 0;
 
             while (tries--)
             {
-                int idx = (int)(wfc_randi()) % (int)(grid->rows * grid->cols);
+                unsigned int idx = wfc_randi_range(0, total_cells);
+                if (idx >= total_cells)
+                    continue; /* safety */
 
                 if (grid->cell_collapsed[idx])
                 {
-                    int tile_id = grid->cell_entropies[idx * (int)tiles->tile_count + 0];
+                    unsigned int tile_id = grid->cell_entropies[idx * tiles->tile_count + 0];
 
                     if (tile_id == t)
                     {
-                        int x0 = (idx % (int)grid->cols) * tile_w * scale;
-                        int y0 = (idx / (int)grid->cols) * tile_h * scale;
+                        int x0 = (int)(idx % grid->cols) * tile_w * scale;
+                        int y0 = (int)(idx / grid->cols) * tile_h * scale;
 
-                        draw_border(buffer, img_w, img_h, x0, y0, tile_w * scale, tile_h * scale, 2);
+                        draw_border(buffer, img_w, img_h, x0, y0,
+                                    tile_w * scale, tile_h * scale, 2);
 
+                        found = 1;
                         break;
                     }
                 }
+            }
+
+            /* (optional) could log or color differently if tile type wasn't found */
+            if (!found)
+            {
+                /* tile type t not present */
             }
         }
     }
