@@ -147,6 +147,7 @@ typedef struct wfc_tiles
   /* Initialization Flags */
   unsigned int tiles_initialized;
   unsigned int tiles_compatible_tiles_computed;
+  unsigned int tile_direction_compatible_masks_words; /* = (tile_count + 31) / 32 */
 
   /* Configuration */
   unsigned int tile_capacity;               /* Maximum number of tiles that can be stored */
@@ -161,8 +162,8 @@ typedef struct wfc_tiles
   /* Data arrays per tile and tile_direction_count */
   wfc_socket_8x07 *tile_direction_sockets; /* Size: tile_count * tile_direction_count. The sockets (e.g flags) for each direction */
 
-  /* Data array per tile, tile_direction_count and tile_count */
-  unsigned char *tile_direction_compatible_tiles; /* Size: tile_count * tile_direction_count * tile_count. What tiles are allowed for each direction of this current tile */
+  /* Dynamic bitmask: each tile-direction has mask_words words to represent all compatible tiles */
+  unsigned int *tile_direction_compatible_masks;
 
 } wfc_tiles;
 
@@ -176,7 +177,7 @@ typedef struct wfc_tiles
 #define WFC_TILES_MEMORY_SIZE(tile_capacity, tile_direction_count)                                         \
   ((unsigned int)(sizeof(unsigned int) * ((tile_capacity) * 2                        /* ids + rotations */ \
                                           + (tile_capacity) * (tile_direction_count) /* sockets */         \
-                                          + (tile_capacity) * (tile_direction_count) * (tile_capacity) / 4) /* compatible tiles */))
+                                          + (tile_capacity) * (tile_direction_count) * ((tile_capacity + 31) / 32) /* mask words */)))
 
 #define WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(tiles_ptr, tile_index, dir_index) \
   (((tile_index) * (tiles_ptr)->tile_direction_count + (dir_index)) * (tiles_ptr)->tile_count)
@@ -199,7 +200,7 @@ WFC_API WFC_INLINE int wfc_tiles_initialize(wfc_tiles *tiles, unsigned char *til
   tiles->tile_direction_sockets = (wfc_socket_8x07 *)ptr;
   ptr += sizeof(wfc_socket_8x07) * (tiles->tile_capacity * tiles->tile_direction_count);
 
-  tiles->tile_direction_compatible_tiles = (unsigned char *)ptr;
+  tiles->tile_direction_compatible_masks = (unsigned int *)ptr;
 
   tiles->tiles_initialized = 1;
 
@@ -280,11 +281,13 @@ WFC_API WFC_INLINE int wfc_tiles_add_tile(
 
 WFC_API WFC_INLINE int wfc_tiles_compute_compatible_tiles(wfc_tiles *tiles)
 {
-  unsigned int a, b, d;
   unsigned int tile_count;
   unsigned int dir_count;
+  unsigned int mask_words;
 
-  if (!tiles || !tiles->tiles_initialized || !tiles->tile_direction_compatible_tiles || tiles->tile_count < 1 || tiles->tile_direction_count < 1)
+  unsigned int a, b, d;
+
+  if (!tiles || !tiles->tiles_initialized || !tiles->tile_direction_compatible_masks)
   {
     return 0;
   }
@@ -292,22 +295,33 @@ WFC_API WFC_INLINE int wfc_tiles_compute_compatible_tiles(wfc_tiles *tiles)
   tile_count = tiles->tile_count;
   dir_count = tiles->tile_direction_count;
 
+  tiles->tile_direction_compatible_masks_words = (tile_count + 31) / 32;
+  mask_words = tiles->tile_direction_compatible_masks_words;
+
+  /* Clear masks */
+  for (a = 0; a < tile_count * dir_count * mask_words; ++a)
+  {
+    tiles->tile_direction_compatible_masks[a] = 0;
+  }
+
   for (a = 0; a < tile_count; ++a)
   {
-    wfc_socket_8x07 *a_sockets = &tiles->tile_direction_sockets[a * dir_count];
 
     for (d = 0; d < dir_count; ++d)
     {
-      wfc_socket_8x07 socket_a = a_sockets[d];
 
+      unsigned int base = (a * dir_count + d) * mask_words;
       unsigned int opp_dir = (d + dir_count / 2) % dir_count;
-      unsigned int offset = (a * dir_count + d) * tile_count;
+      wfc_socket_8x07 socket_a = tiles->tile_direction_sockets[a * dir_count + d];
 
       for (b = 0; b < tile_count; ++b)
       {
         wfc_socket_8x07 socket_b = tiles->tile_direction_sockets[b * dir_count + opp_dir];
 
-        tiles->tile_direction_compatible_tiles[offset + b] = (wfc_socket_reverse(socket_b, tiles->tile_direction_socket_count) == socket_a);
+        if (wfc_socket_reverse(socket_b, tiles->tile_direction_socket_count) == socket_a)
+        {
+          tiles->tile_direction_compatible_masks[base + (b / 32)] |= 1u << (b % 32);
+        }
       }
     }
   }
@@ -454,43 +468,52 @@ WFC_API WFC_INLINE int wfc_grid_neighbour_index(wfc_grid *grid, int index, unsig
  */
 WFC_API WFC_INLINE void wfc_update_neighbour_entropies(wfc_grid *grid, wfc_tiles *tiles, unsigned int collapsed_index)
 {
-  unsigned int dir, dcount, tcount;
-  unsigned int collapsed_tile;
-  unsigned int tile_index;
-  unsigned int neighbour_index;
+  unsigned int dir_count = tiles->tile_direction_count;
+  unsigned int tile_count = tiles->tile_count;
+  unsigned int mask_words = tiles->tile_direction_compatible_masks_words;
+  unsigned int d;
 
-  dcount = tiles->tile_direction_count;
-  tcount = tiles->tile_count;
-  collapsed_tile = grid->cell_entropies[collapsed_index * tcount + 0];
+  unsigned int collapsed_tile = grid->cell_entropies[collapsed_index * tile_count + 0];
 
-  for (dir = 0; dir < dcount; ++dir)
+  for (d = 0; d < dir_count; ++d)
   {
-    neighbour_index = (unsigned int)wfc_grid_neighbour_index(grid, (int)collapsed_index, dir, dcount);
+    int neighbour = wfc_grid_neighbour_index(grid, (int)collapsed_index, d, dir_count);
 
-    if (neighbour_index == (unsigned int)-1)
-      continue;
+    unsigned int combined_mask[32]; /* Max 1024 tiles with 32-bit words */
+    unsigned int *mask_ptr;
+    unsigned char new_count = 0;
+    unsigned int w, k;
 
-    if (grid->cell_collapsed[neighbour_index])
-      continue;
-
-    /* prune incompatible tiles */
+    if (neighbour < 0 || grid->cell_collapsed[neighbour])
     {
-      unsigned char new_count = 0;
-      unsigned char old_count = grid->cell_entropy_count[neighbour_index];
-
-      for (tile_index = 0; tile_index < old_count; ++tile_index)
-      {
-        unsigned int candidate_tile = grid->cell_entropies[neighbour_index * tcount + tile_index];
-        unsigned int compatible = tiles->tile_direction_compatible_tiles[(collapsed_tile * dcount + dir) * tcount + candidate_tile];
-
-        if (compatible)
-        {
-          grid->cell_entropies[neighbour_index * tcount + new_count++] = (unsigned char)candidate_tile;
-        }
-      }
-
-      grid->cell_entropy_count[neighbour_index] = new_count;
+      continue;
     }
+
+    for (w = 0; w < mask_words; ++w)
+    {
+      combined_mask[w] = 0;
+    }
+
+    /* Combine masks from all tiles in collapsed cell (here only 1 tile) */
+    mask_ptr = &tiles->tile_direction_compatible_masks[(collapsed_tile * dir_count + d) * mask_words];
+
+    for (w = 0; w < mask_words; ++w)
+    {
+      combined_mask[w] |= mask_ptr[w];
+    }
+
+    /* Filter neighbour entropies */
+    for (k = 0; k < grid->cell_entropy_count[neighbour]; ++k)
+    {
+      unsigned int tile = grid->cell_entropies[neighbour * (int) tile_count + (int) k];
+
+      if (combined_mask[tile / 32] & (1u << (tile % 32)))
+      {
+        grid->cell_entropies[neighbour * (int) tile_count + new_count++] = (unsigned char)tile;
+      }
+    }
+
+    grid->cell_entropy_count[neighbour] = new_count;
   }
 }
 

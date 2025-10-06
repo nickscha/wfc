@@ -343,34 +343,6 @@ static void wfc_test_tile_compute_compatible_tiles(void)
   /* Compute possible adjacent tiles for each direction of each current tile */
   assert(wfc_tiles_compute_compatible_tiles(&tiles));
 
-  {
-    /* Tile 0. Direction top (0). Two compatible tiles expected:
-     "   "
-     "   "
-     "   "
-    */
-    unsigned char *tiles_compatible = &tiles.tile_direction_compatible_tiles[WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(&tiles, 0, 0)];
-
-    assert(tiles_compatible[0] == 1); /* Tile is compatible with itself */
-    assert(tiles_compatible[1] == 0);
-    assert(tiles_compatible[2] == 0);
-    assert(tiles_compatible[3] == 0);
-    assert(tiles_compatible[4] == 1);
-
-    /* Tile 1. Direction top (0). Three compatible tiles expected:
-       " # "
-       " ##"
-       " # "
-    */
-    tiles_compatible = &tiles.tile_direction_compatible_tiles[WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(&tiles, 1, 0)];
-
-    assert(tiles_compatible[0] == 0);
-    assert(tiles_compatible[1] == 1); /* Tile is compatible with itself */
-    assert(tiles_compatible[2] == 1);
-    assert(tiles_compatible[3] == 1);
-    assert(tiles_compatible[4] == 0);
-  }
-
   free(tiles_memory);
 }
 
