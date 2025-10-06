@@ -162,7 +162,7 @@ typedef struct wfc_tiles
   wfc_socket_8x07 *tile_direction_sockets; /* Size: tile_count * tile_direction_count. The sockets (e.g flags) for each direction */
 
   /* Data array per tile, tile_direction_count and tile_count */
-  unsigned int *tile_direction_compatible_tiles; /* Size: tile_count * tile_direction_count * tile_count. What tiles are allowed for each direction of this current tile */
+  unsigned char *tile_direction_compatible_tiles; /* Size: tile_count * tile_direction_count * tile_count. What tiles are allowed for each direction of this current tile */
 
 } wfc_tiles;
 
@@ -176,7 +176,7 @@ typedef struct wfc_tiles
 #define WFC_TILES_MEMORY_SIZE(tile_capacity, tile_direction_count)                                         \
   ((unsigned int)(sizeof(unsigned int) * ((tile_capacity) * 2                        /* ids + rotations */ \
                                           + (tile_capacity) * (tile_direction_count) /* sockets */         \
-                                          + (tile_capacity) * (tile_direction_count) * (tile_capacity)) /* compatible tiles */))
+                                          + (tile_capacity) * (tile_direction_count) * (tile_capacity) / 4) /* compatible tiles */))
 
 #define WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(tiles_ptr, tile_index, dir_index) \
   (((tile_index) * (tiles_ptr)->tile_direction_count + (dir_index)) * (tiles_ptr)->tile_count)
@@ -199,7 +199,7 @@ WFC_API WFC_INLINE int wfc_tiles_initialize(wfc_tiles *tiles, unsigned char *til
   tiles->tile_direction_sockets = (wfc_socket_8x07 *)ptr;
   ptr += sizeof(wfc_socket_8x07) * (tiles->tile_capacity * tiles->tile_direction_count);
 
-  tiles->tile_direction_compatible_tiles = (unsigned int *)ptr;
+  tiles->tile_direction_compatible_tiles = (unsigned char *)ptr;
 
   tiles->tiles_initialized = 1;
 

@@ -349,7 +349,7 @@ static void wfc_test_tile_compute_compatible_tiles(void)
      "   "
      "   "
     */
-    unsigned int *tiles_compatible = &tiles.tile_direction_compatible_tiles[WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(&tiles, 0, 0)];
+    unsigned char *tiles_compatible = &tiles.tile_direction_compatible_tiles[WFC_TILE_DIRECTION_COMPATIBLE_TILES_INDEX_AT(&tiles, 0, 0)];
 
     assert(tiles_compatible[0] == 1); /* Tile is compatible with itself */
     assert(tiles_compatible[1] == 0);
