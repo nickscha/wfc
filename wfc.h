@@ -381,8 +381,10 @@ WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, uns
 
   grid->cell_collapsed = ptr;
   ptr += sizeof(unsigned char) * grid_size;
+
   grid->cell_entropy_count = ptr;
   ptr += sizeof(unsigned char) * grid_size;
+  
   grid->cell_entropies = ptr;
 
   /* For each cell in the grid we set the cell_entropies to all available tiles */
@@ -432,6 +434,7 @@ WFC_API WFC_INLINE void wfc_grid_collapse_current_cell(wfc_grid *grid, wfc_tiles
 WFC_API WFC_INLINE int wfc_grid_neighbour_index(wfc_grid *grid, int index, unsigned int dir, unsigned int dir_count)
 {
   int x, y;
+
   wfc_grid_coords_at(index, (int)grid->cols, &x, &y);
 
   (void)dir_count;
@@ -553,7 +556,7 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
         {
           return 0; /* This cell has no valid tiles → unsolvable */
         }
-        
+
         if (count < lowest_entropy)
         {
           lowest_entropy = count;
