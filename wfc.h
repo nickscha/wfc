@@ -384,7 +384,7 @@ WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, uns
 
   grid->cell_entropy_count = ptr;
   ptr += sizeof(unsigned char) * grid_size;
-  
+
   grid->cell_entropies = ptr;
 
   /* For each cell in the grid we set the cell_entropies to all available tiles */
@@ -590,7 +590,7 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
     wfc_update_neighbour_entropies(grid, tiles, grid->cell_index_current);
   }
 
-  return 1;
+  return (grid->cells_processed != grid->rows * grid->cols) ? 0 : 1;
 }
 
 #endif /* WFC_H */
