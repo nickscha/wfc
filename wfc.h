@@ -413,7 +413,7 @@ WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, uns
 
   grid_size = grid->cols * grid->rows;
   tile_count = tiles->tile_count;
-  
+
   grid->cell_entropy_mask_words = (tile_count + 31) / 32;
 
   grid->cell_collapsed = ptr;
@@ -637,6 +637,11 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
         {
           lowest_entropy = count;
           lowest_cell = i;
+
+          if (lowest_entropy == 1)
+          {
+            break; /* can't get lower than 1 */
+          }
         }
       }
     }
