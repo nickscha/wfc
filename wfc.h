@@ -598,7 +598,7 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
     wfc_update_neighbour_entropies(grid, tiles, grid->cell_index_current);
   }
 
-  return (grid->cells_processed != grid->rows * grid->cols) ? 0 : 1;
+  return grid->cells_processed == grid->rows * grid->cols;
 }
 
 #endif /* WFC_H */

@@ -139,6 +139,7 @@ static void wfc_export_ppm(
                 tile_id = grid->cell_entropies[idx_grid * (int)tiles->tile_count + 0];
 
                 art = tile_chars[tile_id];
+                
                 if (art[local_y * tile_w + local_x] == '#')
                 {
                     /* Fake 3D elevation */
