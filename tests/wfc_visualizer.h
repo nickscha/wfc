@@ -87,6 +87,8 @@ static void wfc_export_ppm(
     int *buffer;
     FILE *fp;
 
+    (void)tiles;
+
     if (scale < 1)
     {
         scale = 1;
@@ -136,10 +138,10 @@ static void wfc_export_ppm(
             }
             else
             {
-                tile_id = grid->cell_entropies[idx_grid * (int)tiles->tile_count + 0];
+                tile_id = (int)wfc_grid_find_nth_tile_in_mask(grid, (unsigned int)idx_grid, 0);
 
                 art = tile_chars[tile_id];
-                
+
                 if (art[local_y * tile_w + local_x] == '#')
                 {
                     /* Fake 3D elevation */
@@ -213,15 +215,14 @@ static void wfc_export_ppm(
 
                 if (grid->cell_collapsed[idx])
                 {
-                    unsigned int tile_id = grid->cell_entropies[idx * tiles->tile_count + 0];
+                    unsigned int tile_id = wfc_grid_find_nth_tile_in_mask(grid, idx, 0);
 
                     if (tile_id == t)
                     {
                         int x0 = (int)(idx % grid->cols) * tile_w * scale;
                         int y0 = (int)(idx / grid->cols) * tile_h * scale;
 
-                        draw_border(buffer, img_w, img_h, x0, y0,
-                                    tile_w * scale, tile_h * scale, 2);
+                        draw_border(buffer, img_w, img_h, x0, y0, tile_w * scale, tile_h * scale, 2);
 
                         found = 1;
                         break;

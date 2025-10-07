@@ -55,6 +55,18 @@ WFC_API WFC_INLINE unsigned int wfc_randi_range(unsigned int min, unsigned int m
   return min + val;
 }
 
+/* Counts the number of set bits in an integer (population count) */
+WFC_API WFC_INLINE unsigned int wfc_popcount(unsigned int n)
+{
+  unsigned int count = 0;
+  while (n > 0)
+  {
+    n &= (n - 1);
+    count++;
+  }
+  return count;
+}
+
 /* #############################################################################
  * # Socket Mask
  * #############################################################################
@@ -371,16 +383,19 @@ typedef struct wfc_grid
   unsigned int cells_processed;    /* The number of cells already processed */
   unsigned int cell_index_current; /* The current processed cell */
 
+  /* The number of unsigned ints needed to store the bitmask for one cell's entropies */
+  unsigned int cell_entropy_mask_words;
+
   /* Data arrays */
   unsigned char *cell_collapsed;     /* Is the current cell collapsed? Size = rows * cols */
   unsigned char *cell_entropy_count; /* How many entropy/options does the cell have? Size = rows * cols */
-  unsigned char *cell_entropies;     /* The entropy array per cell & tile. Size = rows * cols * tile_count */
+  unsigned int *cell_entropy_masks;  /* The entropy bitmasks. Size = rows * cols * cell_entropy_mask_words */
 
 } wfc_grid;
 
-#define WFC_GRID_MEMORY_SIZE(rows, cols, tile_count)                                                       \
-  ((unsigned int)(sizeof(unsigned char) * (((rows) * (cols)) * 2 /* cell_collapsed + cell_entropy_count */ \
-                                           + ((rows) * (cols)) * (tile_count) /* cell_entropies */)))
+#define WFC_GRID_MEMORY_SIZE(rows, cols, tile_count)                                                      \
+  ((unsigned int)(sizeof(unsigned char) * ((rows) * (cols)) * 2 /* cell_collapsed + cell_entropy_count */ \
+                  + sizeof(unsigned int) * ((rows) * (cols)) * ((tile_count + 31) / 32) /* cell_entropy_masks */))
 
 WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, unsigned char *grid_memory, unsigned int grid_memory_size)
 {
@@ -389,6 +404,7 @@ WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, uns
   unsigned int grid_size;
   unsigned int tile_count;
   unsigned int i;
+  unsigned int j;
 
   if (!grid || !tiles || !grid_memory || grid_memory_size < WFC_GRID_MEMORY_SIZE(grid->rows, grid->cols, tiles->tile_count))
   {
@@ -397,6 +413,8 @@ WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, uns
 
   grid_size = grid->cols * grid->rows;
   tile_count = tiles->tile_count;
+  
+  grid->cell_entropy_mask_words = (tile_count + 31) / 32;
 
   grid->cell_collapsed = ptr;
   ptr += sizeof(unsigned char) * grid_size;
@@ -404,18 +422,17 @@ WFC_API WFC_INLINE int wfc_grid_initialize(wfc_grid *grid, wfc_tiles *tiles, uns
   grid->cell_entropy_count = ptr;
   ptr += sizeof(unsigned char) * grid_size;
 
-  grid->cell_entropies = ptr;
+  grid->cell_entropy_masks = (unsigned int *)ptr;
 
-  /* For each cell in the grid we set the cell_entropies to all available tiles */
+  /* Initialize cell entropy bitmasks to all 1s (all tiles possible) */
   for (i = 0; i < grid_size; ++i)
   {
-    unsigned int base_index = (i * tile_count);
-    unsigned char tile_index;
+    unsigned int base_index = (i * grid->cell_entropy_mask_words);
 
-    for (tile_index = 0; tile_index < tile_count; ++tile_index)
+    for (j = 0; j < grid->cell_entropy_mask_words; ++j)
     {
-      /* Set the tile index for the entropy */
-      grid->cell_entropies[base_index + tile_index] = tile_index;
+      /* Set all bits to 1, meaning all tiles are initially possible */
+      grid->cell_entropy_masks[base_index + j] = 0xFFFFFFFF;
     }
 
     grid->cell_collapsed[i] = 0;
@@ -442,11 +459,22 @@ WFC_API WFC_INLINE void wfc_grid_coords_at(int index, int cols, int *x, int *y)
 }
 
 /* Collapse the current cell and set the first entropies entry to the desired tile_index entropies entry */
-WFC_API WFC_INLINE void wfc_grid_collapse_current_cell(wfc_grid *grid, wfc_tiles *tiles, unsigned int tile_index)
+WFC_API WFC_INLINE void wfc_grid_collapse_current_cell(wfc_grid *grid, unsigned int tile_to_keep)
 {
+  unsigned int i;
+  unsigned int base_mask_index = grid->cell_index_current * grid->cell_entropy_mask_words;
+
+  /* Clear all bits in the cell's entropy mask */
+  for (i = 0; i < grid->cell_entropy_mask_words; ++i)
+  {
+    grid->cell_entropy_masks[base_mask_index + i] = 0;
+  }
+
+  /* Set the single bit for the chosen tile */
+  grid->cell_entropy_masks[base_mask_index + (tile_to_keep / 32)] = (1u << (tile_to_keep % 32));
+
   grid->cell_collapsed[grid->cell_index_current] = 1;     /* Mark the cell as collapsed */
-  grid->cell_entropy_count[grid->cell_index_current] = 1; /* A collapsed cell has to have only 1 entropy left (0 = no tiles found, invalid )*/
-  grid->cell_entropies[grid->cell_index_current * tiles->tile_count + 0] = grid->cell_entropies[grid->cell_index_current * tiles->tile_count + tile_index];
+  grid->cell_entropy_count[grid->cell_index_current] = 1; /* A collapsed cell has only 1 option */
   grid->cells_processed++;
 }
 
@@ -484,6 +512,40 @@ WFC_API WFC_INLINE int wfc_grid_neighbour_index(wfc_grid *grid, int index, unsig
   return wfc_grid_index_at(x, y, (int)grid->cols);
 }
 
+WFC_API WFC_INLINE unsigned int wfc_grid_find_nth_tile_in_mask(wfc_grid *grid, unsigned int cell_index, unsigned int n)
+{
+  unsigned int word_index, bit_index;
+  unsigned int count = 0;
+  unsigned int base_mask_index = cell_index * grid->cell_entropy_mask_words;
+
+  for (word_index = 0; word_index < grid->cell_entropy_mask_words; ++word_index)
+  {
+    unsigned int word = grid->cell_entropy_masks[base_mask_index + word_index];
+    unsigned int bits_in_word = wfc_popcount(word);
+
+    if (count + bits_in_word > n)
+    {
+      /* The Nth bit is in this word */
+      for (bit_index = 0; bit_index < 32; ++bit_index)
+      {
+        if (word & (1u << bit_index))
+        {
+          if (count == n)
+          {
+            return (word_index * 32) + bit_index;
+          }
+
+          count++;
+        }
+      }
+    }
+
+    count += bits_in_word;
+  }
+
+  return (unsigned int)-1; /* Should not be reached if n < entropy_count */
+}
+
 /* #############################################################################
  * # Wave Function Collapse Algorithm
  * #############################################################################
@@ -492,39 +554,45 @@ WFC_API WFC_INLINE void wfc_update_neighbour_entropies(wfc_grid *grid, wfc_tiles
 {
   unsigned int dir_count = tiles->tile_direction_count;
   unsigned int tile_count = tiles->tile_count;
-  unsigned int mask_words = tiles->tile_direction_compatible_masks_words;
-  unsigned int d;
+  unsigned int compatible_mask_words = tiles->tile_direction_compatible_masks_words;
+  unsigned int d, k;
 
-  unsigned int collapsed_tile = grid->cell_entropies[collapsed_index * tile_count + 0];
+  /* Since the cell is collapsed, it has only one tile. Find it. */
+  unsigned int collapsed_tile = wfc_grid_find_nth_tile_in_mask(grid, collapsed_index, 0);
+
+  /* This should not happen if the logic is correct */
+  if (collapsed_tile > tile_count)
+  {
+    return;
+  }
 
   for (d = 0; d < dir_count; ++d)
   {
-    int neighbour = wfc_grid_neighbour_index(grid, (int)collapsed_index, d, dir_count);
+    int neighbour_index = wfc_grid_neighbour_index(grid, (int)collapsed_index, d, dir_count);
 
-    unsigned int *mask_ptr;
-    unsigned char new_count = 0;
-    unsigned int k;
+    unsigned int *compatible_mask;
+    unsigned int *neighbour_mask;
+    unsigned int new_entropy_count;
 
-    if (neighbour < 0 || grid->cell_collapsed[neighbour])
+    if (neighbour_index < 0 || grid->cell_collapsed[neighbour_index])
     {
       continue;
     }
 
-    /* Combine masks from all tiles in collapsed cell (here only 1 tile) */
-    mask_ptr = &tiles->tile_direction_compatible_masks[(collapsed_tile * dir_count + d) * mask_words];
+    /* Get the mask of tiles that are compatible with our collapsed tile in this direction */
+    compatible_mask = &tiles->tile_direction_compatible_masks[(collapsed_tile * dir_count + d) * compatible_mask_words];
+    neighbour_mask = &grid->cell_entropy_masks[(unsigned int)neighbour_index * grid->cell_entropy_mask_words];
 
-    /* Filter neighbour entropies */
-    for (k = 0; k < grid->cell_entropy_count[neighbour]; ++k)
+    new_entropy_count = 0;
+
+    /* Filter the neighbor's possibilities by ANDing its mask with the compatibility mask. */
+    for (k = 0; k < compatible_mask_words; ++k)
     {
-      unsigned int tile = grid->cell_entropies[neighbour * (int)tile_count + (int)k];
-
-      if (mask_ptr[tile / 32] & (1u << (tile % 32)))
-      {
-        grid->cell_entropies[neighbour * (int)tile_count + new_count++] = (unsigned char)tile;
-      }
+      neighbour_mask[k] &= compatible_mask[k];
+      new_entropy_count += wfc_popcount(neighbour_mask[k]);
     }
 
-    grid->cell_entropy_count[neighbour] = new_count;
+    grid->cell_entropy_count[neighbour_index] = (unsigned char)new_entropy_count;
   }
 }
 
@@ -582,16 +650,21 @@ WFC_API WFC_INLINE int wfc(wfc_grid *grid, wfc_tiles *tiles)
     /* 2. Randomly choose one tile from available entropies */
     {
       unsigned int choice_index;
+      unsigned int chosen_tile_index;
 
       choice_index = wfc_randi_range(0, lowest_entropy);
 
-      if (choice_index >= lowest_entropy)
+      /* Find the actual tile index corresponding to the random choice */
+      chosen_tile_index = wfc_grid_find_nth_tile_in_mask(grid, lowest_cell, choice_index);
+
+      /* This would mean a contradiction or bug */
+      if (chosen_tile_index > tiles->tile_count)
       {
-        choice_index = lowest_entropy - 1;
+        return 0;
       }
 
       grid->cell_index_current = lowest_cell;
-      wfc_grid_collapse_current_cell(grid, tiles, choice_index);
+      wfc_grid_collapse_current_cell(grid, chosen_tile_index);
     }
 
     /* 3. Propagate constraints */
