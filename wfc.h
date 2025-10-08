@@ -59,6 +59,7 @@ WFC_API WFC_INLINE unsigned int wfc_randi_range(unsigned int min, unsigned int m
 WFC_API WFC_INLINE unsigned int wfc_popcount(unsigned int n)
 {
   unsigned int count = 0;
+
   while (n > 0)
   {
     n &= (n - 1);
@@ -91,6 +92,7 @@ WFC_API WFC_INLINE wfc_socket_8x07 wfc_socket_pack_4(
     unsigned int socket_value_3)
 {
   wfc_socket_8x07 s = 0;
+
   s = wfc_socket_pack(s, 0, socket_value_0);
   s = wfc_socket_pack(s, 1, socket_value_1);
   s = wfc_socket_pack(s, 2, socket_value_2);
@@ -110,6 +112,7 @@ WFC_API WFC_INLINE wfc_socket_8x07 wfc_socket_pack_8(
     unsigned int socket_value_7)
 {
   wfc_socket_8x07 s = 0;
+
   s = wfc_socket_pack(s, 0, socket_value_0);
   s = wfc_socket_pack(s, 1, socket_value_1);
   s = wfc_socket_pack(s, 2, socket_value_2);
@@ -143,6 +146,7 @@ WFC_API WFC_INLINE wfc_socket_8x07 wfc_socket_reverse(wfc_socket_8x07 s, unsigne
   for (i = 0; i < socket_count; ++i)
   {
     unsigned int v = wfc_socket_unpack(s, (int)i);
+    
     r = wfc_socket_pack(r, ((int)socket_count - 1) - (int)i, v);
   }
 
