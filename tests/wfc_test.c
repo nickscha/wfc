@@ -349,22 +349,52 @@ static void wfc_test_tile_compute_compatible_tiles(void)
      "   "
      "   "
     */
+    /* Top */
     assert(wfc_tiles_is_compatible_tile(&tiles, 0, 0, 0)); /* Tile is compatible with itself */
     assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 0, 1));
     assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 0, 2));
     assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 0, 3));
     assert(wfc_tiles_is_compatible_tile(&tiles, 0, 0, 4));
 
+    /* Right */
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 1, 0)); /* Tile is compatible with itself */
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 1, 1));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 1, 2));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 1, 3));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 1, 4));
+
+    /* Bottom */
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 2, 0)); /* Tile is compatible with itself */
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 2, 1));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 2, 2));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 2, 3));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 2, 4));
+
+    /* Left */
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 3, 0)); /* Tile is compatible with itself */
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 3, 1));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 3, 2));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 0, 3, 3));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 0, 3, 4));
+
     /* Tile 1. Direction top (0). Three compatible tiles expected:
        " # "
        " ##"
        " # "
     */
+    /* Top */
     assert(!wfc_tiles_is_compatible_tile(&tiles, 1, 0, 0));
     assert(wfc_tiles_is_compatible_tile(&tiles, 1, 0, 1)); /* Tile is compatible with itself */
     assert(wfc_tiles_is_compatible_tile(&tiles, 1, 0, 2));
     assert(wfc_tiles_is_compatible_tile(&tiles, 1, 0, 3));
     assert(!wfc_tiles_is_compatible_tile(&tiles, 1, 0, 4));
+
+    /* Right */
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 1, 1, 0));
+    assert(!wfc_tiles_is_compatible_tile(&tiles, 1, 1, 1));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 1, 1, 2));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 1, 1, 3));
+    assert(wfc_tiles_is_compatible_tile(&tiles, 1, 1, 4));
   }
 
   free(tiles_memory);
