@@ -522,6 +522,8 @@ static void wfc_test_simple_tiles(void)
       wfc_export_ppm(&grid, &tiles, tile_chars, (int)(sizeof(tile_chars) / sizeof(tile_chars[0])), "wfc.ppm", 2, 1, 0, 3, 3);
     }
   }
+
+  free(tiles_memory);
 }
 
 int main(void)
